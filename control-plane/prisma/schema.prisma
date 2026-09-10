@@ -211,9 +211,9 @@ model ServerInstance {
   name            String
   installPath     String?  @map("install_path")
   startCommand    String?  @map("start_command")
-  telnetHost      String?  @map("telnet_host")
-  telnetPort      Int?     @map("telnet_port")
-  telnetPassword  String?  @map("telnet_password")
+  rconHost        String?  @map("rcon_host")
+  rconPort        Int?     @map("rcon_port")
+  rconPassword    String?  @map("rcon_password")
   maintenanceMode Boolean  @default(false) @map("maintenance_mode")
   rebootIfDown    Boolean  @default(false) @map("reboot_if_down")
   mapEmbedUrl     String?  @map("map_embed_url")

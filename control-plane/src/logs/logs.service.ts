@@ -130,7 +130,7 @@ export class LogsService {
 
   private async enqueueModerationCommand(orgId:string,serverInstanceId:string,command:string){
     const server=await this.prisma.serverInstance.findFirst({where:{id:serverInstanceId,orgId},include:{gameType:{select:{slug:true}}}});if(!server)return;
-    const payload={server_instance_id:server.id,game_type:server.gameType.slug,install_path:server.installPath??undefined,start_command:server.startCommand??undefined,telnet_host:server.telnetHost??undefined,telnet_port:server.telnetPort??undefined,telnet_password:server.telnetPassword??undefined,config:server.config??undefined,command};
+    const payload={server_instance_id:server.id,game_type:server.gameType.slug,install_path:server.installPath??undefined,start_command:server.startCommand??undefined,rcon_host:server.rconHost??undefined,rcon_port:server.rconPort??undefined,rcon_password:server.rconPassword??undefined,config:server.config??undefined,command};
     const job=await this.prisma.job.create({data:{orgId,serverInstanceId,type:'RCON',payload}});const run=await this.prisma.jobRun.create({data:{jobId:job.id,hostId:server.hostId,status:'pending'}});await this.jobsQueue.addJob(orgId,{jobId:job.id,jobRunId:run.id,hostId:server.hostId,serverInstanceId,type:'RCON',payload});
   }
 

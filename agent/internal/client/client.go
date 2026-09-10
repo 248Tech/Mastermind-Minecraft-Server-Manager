@@ -67,9 +67,9 @@ type DiscoveredServer struct {
 	Name           string                 `json:"name,omitempty"`
 	InstallPath    string                 `json:"installPath,omitempty"`
 	StartCommand   string                 `json:"startCommand,omitempty"`
-	TelnetHost     string                 `json:"telnetHost,omitempty"`
-	TelnetPort     int                    `json:"telnetPort,omitempty"`
-	TelnetPassword string                 `json:"telnetPassword,omitempty"`
+	RconHost     string                 `json:"rconHost,omitempty"`
+	RconPort     int                    `json:"rconPort,omitempty"`
+	RconPassword string                 `json:"rconPassword,omitempty"`
 	Config         map[string]interface{} `json:"config,omitempty"`
 }
 

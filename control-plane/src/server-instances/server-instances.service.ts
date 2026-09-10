@@ -78,9 +78,9 @@ export class ServerInstancesService {
         name: dto.name.trim(),
         installPath: dto.installPath?.trim() || null,
         startCommand: dto.startCommand?.trim() || null,
-        telnetHost: dto.telnetHost?.trim() || null,
-        telnetPort: dto.telnetPort ?? null,
-        telnetPassword: dto.telnetPassword ?? null,
+        rconHost: dto.rconHost?.trim() || null,
+        rconPort: dto.rconPort ?? null,
+        rconPassword: dto.rconPassword ?? null,
         mapEmbedUrl: dto.mapEmbedUrl?.trim() || null,
       },
       include: { host: true, gameType: { select: { slug: true, capabilities: true } } },
@@ -101,9 +101,9 @@ export class ServerInstancesService {
       name?: string;
       installPath?: string;
       startCommand?: string;
-      telnetHost?: string;
-      telnetPort?: number;
-      telnetPassword?: string;
+      rconHost?: string;
+      rconPort?: number;
+      rconPassword?: string;
       config?: Record<string, unknown>;
     },
   ) {
@@ -137,9 +137,9 @@ export class ServerInstancesService {
           name: dto.name?.trim() || `${host.name} Minecraft`,
           installPath,
           startCommand: dto.startCommand?.trim() || null,
-          telnetHost: dto.telnetHost?.trim() || '127.0.0.1',
-          telnetPort: dto.telnetPort ?? 25575,
-          telnetPassword: dto.telnetPassword ?? null,
+          rconHost: dto.rconHost?.trim() || '127.0.0.1',
+          rconPort: dto.rconPort ?? 25575,
+          rconPassword: dto.rconPassword ?? null,
           mapEmbedUrl: this.mapEmbedHint(discoveryConfig),
           config: discoveryConfig as Prisma.InputJsonValue,
         },
@@ -155,14 +155,14 @@ export class ServerInstancesService {
         ...(dto.startCommand?.trim() && (discoveredManaged || !existing.startCommand) && {
           startCommand: dto.startCommand.trim(),
         }),
-        ...(dto.telnetHost?.trim() && (discoveredManaged || !existing.telnetHost) && {
-          telnetHost: dto.telnetHost.trim(),
+        ...(dto.rconHost?.trim() && (discoveredManaged || !existing.rconHost) && {
+          rconHost: dto.rconHost.trim(),
         }),
-        ...(dto.telnetPort !== undefined && (discoveredManaged || existing.telnetPort == null) && {
-          telnetPort: dto.telnetPort,
+        ...(dto.rconPort !== undefined && (discoveredManaged || existing.rconPort == null) && {
+          rconPort: dto.rconPort,
         }),
-        ...(dto.telnetPassword !== undefined && (discoveredManaged || !existing.telnetPassword) && {
-          telnetPassword: dto.telnetPassword || null,
+        ...(dto.rconPassword !== undefined && (discoveredManaged || !existing.rconPassword) && {
+          rconPassword: dto.rconPassword || null,
         }),
         ...(dto.name?.trim() && discoveredManaged && { name: dto.name.trim() }),
         ...(!existing.mapEmbedUrl && hint ? { mapEmbedUrl: hint } : {}),
@@ -215,9 +215,9 @@ export class ServerInstancesService {
         ...(gameTypeId && { gameTypeId }),
         ...(dto.installPath !== undefined && { installPath: dto.installPath?.trim() || null }),
         ...(dto.startCommand !== undefined && { startCommand: dto.startCommand?.trim() || null }),
-        ...(dto.telnetHost !== undefined && { telnetHost: dto.telnetHost?.trim() || null }),
-        ...(dto.telnetPort !== undefined && { telnetPort: dto.telnetPort ?? null }),
-        ...(dto.telnetPassword !== undefined && { telnetPassword: dto.telnetPassword ?? null }),
+        ...(dto.rconHost !== undefined && { rconHost: dto.rconHost?.trim() || null }),
+        ...(dto.rconPort !== undefined && { rconPort: dto.rconPort ?? null }),
+        ...(dto.rconPassword !== undefined && { rconPassword: dto.rconPassword ?? null }),
         ...(dto.rebootIfDown !== undefined && { rebootIfDown: dto.rebootIfDown }),
         ...(dto.mapEmbedUrl !== undefined && { mapEmbedUrl: dto.mapEmbedUrl?.trim() || null }),
         ...(nextConfig !== undefined && { config: nextConfig }),
@@ -226,7 +226,7 @@ export class ServerInstancesService {
     });
 
     await this.audit(orgId, userId, 'update', id, {
-      updated: Object.keys(dto).filter((k) => k !== 'telnetPassword'),
+      updated: Object.keys(dto).filter((k) => k !== 'rconPassword'),
     }, clientIp);
 
     return this.toResponse(updated, true);
@@ -254,9 +254,9 @@ export class ServerInstancesService {
       name: string;
       installPath: string | null;
       startCommand: string | null;
-      telnetHost: string | null;
-      telnetPort: number | null;
-      telnetPassword: string | null;
+      rconHost: string | null;
+      rconPort: number | null;
+      rconPassword: string | null;
       maintenanceMode?: boolean;
       rebootIfDown?: boolean;
       mapEmbedUrl?: string | null;
@@ -285,8 +285,8 @@ export class ServerInstancesService {
       installPath: row.installPath,
       startCommand: row.startCommand,
       updateCommand: typeof cfg.update_command === 'string' ? cfg.update_command : null,
-      telnetHost: row.telnetHost,
-      telnetPort: row.telnetPort,
+      rconHost: row.rconHost,
+      rconPort: row.rconPort,
       maintenanceMode: Boolean((row as { maintenanceMode?: boolean }).maintenanceMode),
       rebootIfDown: Boolean((row as { rebootIfDown?: boolean }).rebootIfDown),
       mapEmbedUrl: row.mapEmbedUrl ?? null,
@@ -294,7 +294,7 @@ export class ServerInstancesService {
       updatedAt: row.updatedAt,
     };
     if (includePassword) {
-      out.telnetPassword = row.telnetPassword;
+      out.rconPassword = row.rconPassword;
     }
     return out;
   }
@@ -305,9 +305,9 @@ export class ServerInstancesService {
       installPath: string | null;
       config: Prisma.JsonValue | null;
       startCommand: string | null;
-      telnetHost: string | null;
-      telnetPort: number | null;
-      telnetPassword: string | null;
+      rconHost: string | null;
+      rconPort: number | null;
+      rconPassword: string | null;
       mapEmbedUrl?: string | null;
     }>,
     installPath: string | null,

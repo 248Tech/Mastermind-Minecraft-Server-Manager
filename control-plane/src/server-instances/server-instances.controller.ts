@@ -28,7 +28,7 @@ export class ServerInstancesController {
     return this.service.findAll(orgId);
   }
 
-  /** Get one; include telnetPassword for editing. Viewer can read. */
+  /** Get one; include rconPassword for editing. Viewer can read. */
   @Get(':id')
   async findOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.service.findOne(orgId, id, true);

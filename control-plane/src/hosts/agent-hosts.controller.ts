@@ -25,15 +25,15 @@ class DiscoverMinecraftServerDto {
 
   @IsOptional()
   @IsString()
-  telnetHost?: string;
+  rconHost?: string;
 
   @IsOptional()
   @IsInt()
-  telnetPort?: number;
+  rconPort?: number;
 
   @IsOptional()
   @IsString()
-  telnetPassword?: string;
+  rconPassword?: string;
 
   @IsOptional()
   @IsObject()

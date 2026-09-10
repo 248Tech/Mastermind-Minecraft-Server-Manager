@@ -464,7 +464,7 @@ export default function HostsPage() {
   const [showRegisterServer, setShowRegisterServer] = useState(false);
   const [serverForm, setServerForm] = useState({
     name: '', hostId: '', gameType: 'minecraft', installPath: '', startCommand: '',
-    telnetHost: '', telnetPort: '', telnetPassword: '',
+    rconHost: '', rconPort: '', rconPassword: '',
   });
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState('');
@@ -519,12 +519,12 @@ export default function HostsPage() {
         gameType: serverForm.gameType,
         installPath: serverForm.installPath || null,
         startCommand: serverForm.startCommand || null,
-        telnetHost: serverForm.telnetHost || null,
-        telnetPort: serverForm.telnetPort ? parseInt(serverForm.telnetPort) : null,
-        telnetPassword: serverForm.telnetPassword || null,
+        rconHost: serverForm.rconHost || null,
+        rconPort: serverForm.rconPort ? parseInt(serverForm.rconPort) : null,
+        rconPassword: serverForm.rconPassword || null,
       });
       setRegisterSuccess('Server instance registered successfully.');
-      setServerForm({ name: '', hostId: '', gameType: 'minecraft', installPath: '', startCommand: '', telnetHost: '', telnetPort: '', telnetPassword: '' });
+      setServerForm({ name: '', hostId: '', gameType: 'minecraft', installPath: '', startCommand: '', rconHost: '', rconPort: '', rconPassword: '' });
       const updated = await fetchData();
       if (updated) { setHosts(updated.hosts); setServers(updated.servers); }
     } catch (err: unknown) {
@@ -891,7 +891,7 @@ export default function HostsPage() {
                     <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#f1f5f9' }}>{si.name}</div>
                     {full && (
                       <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>
-                        {full.gameType} · {full.installPath || 'No install path'} · RCON: {full.telnetHost ? `${full.telnetHost}:${full.telnetPort}` : 'Not configured'}
+                        {full.gameType} · {full.installPath || 'No install path'} · RCON: {full.rconHost ? `${full.rconHost}:${full.rconPort}` : 'Not configured'}
                       </div>
                     )}
                   </div>
@@ -928,9 +928,9 @@ export default function HostsPage() {
                 { label: 'Name *', key: 'name', placeholder: 'My Minecraft Server', required: true },
                 { label: 'Install Path', key: 'installPath', placeholder: '/opt/minecraft' },
                 { label: 'Start Command', key: 'startCommand', placeholder: './start.sh' },
-                { label: 'RCON Host', key: 'telnetHost', placeholder: '127.0.0.1' },
-                { label: 'RCON Port', key: 'telnetPort', placeholder: '25575', type: 'number' },
-                { label: 'RCON Password', key: 'telnetPassword', placeholder: 'Optional', type: 'password' },
+                { label: 'RCON Host', key: 'rconHost', placeholder: '127.0.0.1' },
+                { label: 'RCON Port', key: 'rconPort', placeholder: '25575', type: 'number' },
+                { label: 'RCON Password', key: 'rconPassword', placeholder: 'Optional', type: 'password' },
               ].map((f) => (
                 <div key={f.key}>
                   <label style={labelStyle}>{f.label}</label>
@@ -994,7 +994,7 @@ export default function HostsPage() {
                       </td>
                       <td style={{ ...tdStyle, color: '#94a3b8' }}>{host?.name || s.hostId || '—'}</td>
                       <td style={{ ...tdStyle, color: '#64748b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{s.installPath || '—'}</td>
-                      <td style={{ ...tdStyle, color: '#64748b' }}>{s.telnetHost ? `${s.telnetHost}:${s.telnetPort}` : '—'}</td>
+                      <td style={{ ...tdStyle, color: '#64748b' }}>{s.rconHost ? `${s.rconHost}:${s.rconPort}` : '—'}</td>
                       <td style={{...tdStyle,whiteSpace:'nowrap'}}><button style={{...btnSecondary,fontSize:'.8rem',padding:'.3rem .6rem'}} onClick={()=>renameServer(s)}>Rename</button><button style={{...btnDanger,marginLeft:6}} onClick={()=>deleteServer(s)}>Unregister</button></td>
                     </tr>
                   );

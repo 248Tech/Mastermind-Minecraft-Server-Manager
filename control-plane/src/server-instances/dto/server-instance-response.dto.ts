@@ -1,5 +1,5 @@
 /**
- * API response: never include telnetPassword in list; include masked or only in get-one for editing (optional).
+ * API response: never include rconPassword in list; include masked or only in get-one for editing (optional).
  * Here we expose it only for get-one so admins can edit; list omits it.
  */
 export class ServerInstanceResponseDto {
@@ -13,10 +13,10 @@ export class ServerInstanceResponseDto {
   name: string;
   installPath: string | null;
   startCommand: string | null;
-  telnetHost: string | null;
-  telnetPort: number | null;
+  rconHost: string | null;
+  rconPort: number | null;
   /** Omitted in list; present in get-one when needed for editing. */
-  telnetPassword?: string | null;
+  rconPassword?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

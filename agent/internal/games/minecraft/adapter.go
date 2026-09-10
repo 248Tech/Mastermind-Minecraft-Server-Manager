@@ -355,19 +355,27 @@ func payloadToConfig(p map[string]interface{}) *agent.InstanceConfig {
 	if v, ok := p["stop_command"].(string); ok {
 		cfg.StopCommand = v
 	}
-	if v, ok := p["telnet_host"].(string); ok {
-		cfg.TelnetHost = v
+	if v, ok := p["rcon_host"].(string); ok && v != "" {
+		cfg.RconHost = v
+	} else if v, ok := p["telnet_host"].(string); ok && v != "" {
+		cfg.RconHost = v // legacy job payload key
 	}
-	if cfg.TelnetHost == "" {
-		cfg.TelnetHost = "127.0.0.1"
+	if cfg.RconHost == "" {
+		cfg.RconHost = "127.0.0.1"
 	}
-	if v, ok := p["telnet_port"].(float64); ok {
-		cfg.TelnetPort = int(v)
+	if v, ok := p["rcon_port"].(float64); ok {
+		cfg.RconPort = int(v)
+	} else if v, ok := p["rcon_port"].(int); ok {
+		cfg.RconPort = v
+	} else if v, ok := p["telnet_port"].(float64); ok {
+		cfg.RconPort = int(v)
 	} else if v, ok := p["telnet_port"].(int); ok {
-		cfg.TelnetPort = v
+		cfg.RconPort = v
 	}
-	if v, ok := p["telnet_password"].(string); ok {
-		cfg.TelnetPassword = v
+	if v, ok := p["rcon_password"].(string); ok && v != "" {
+		cfg.RconPassword = v
+	} else if v, ok := p["telnet_password"].(string); ok {
+		cfg.RconPassword = v // legacy job payload key
 	}
 	if v, ok := p["update_command"].(string); ok && v != "" {
 		if cfg.Extra == nil {
@@ -440,14 +448,14 @@ func getInt(m map[string]interface{}, key string, def int) int {
 
 func (a *Adapter) withRCON(ctx context.Context, cfg *agent.InstanceConfig, fn func(*Client) error) error {
 	_ = ctx
-	if cfg.TelnetPassword == "" {
-		return fmt.Errorf("rcon password required (telnet_password / rcon.password)")
+	if cfg.RconPassword == "" {
+		return fmt.Errorf("rcon password required (rcon_password / rcon.password)")
 	}
-	port := cfg.TelnetPort
+	port := cfg.RconPort
 	if port <= 0 {
 		port = 25575
 	}
-	client, err := Connect(cfg.TelnetHost, port, cfg.TelnetPassword, a.rconTimeout)
+	client, err := Connect(cfg.RconHost, port, cfg.RconPassword, a.rconTimeout)
 	if err != nil {
 		return err
 	}
@@ -524,7 +532,7 @@ func (a *Adapter) Stop(ctx context.Context, cfg *agent.InstanceConfig) error {
 		_, err := c.Exec("stop")
 		return err
 	})
-	host := cfg.TelnetHost
+	host := cfg.RconHost
 	if host == "" {
 		host = "127.0.0.1"
 	}
@@ -552,7 +560,7 @@ func (a *Adapter) Kill(ctx context.Context, cfg *agent.InstanceConfig) error {
 		_, err := c.Exec("stop")
 		return err
 	})
-	host := cfg.TelnetHost
+	host := cfg.RconHost
 	if host == "" {
 		host = "127.0.0.1"
 	}

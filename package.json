@@ -1,6 +1,6 @@
 {
   "name": "mastermind-minecraft-server-manager",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "private": true,
   "description": "Control Plane + Host Agent for Minecraft server management",
   "scripts": {

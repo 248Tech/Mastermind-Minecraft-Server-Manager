@@ -36,10 +36,10 @@ type InstanceConfig struct {
 	InstallPath      string
 	StartCommand     string
 	StopCommand      string
-	// Telnet/RCON for in-game commands
-	TelnetHost     string
-	TelnetPort     int
-	TelnetPassword string
+	// RCON for in-game commands
+	RconHost     string
+	RconPort     int
+	RconPassword string
 	// Optional game-specific config (e.g. log subpath, RCON port)
 	Extra map[string]interface{}
 }
@@ -69,7 +69,7 @@ type GameAdapter interface {
 	// Status returns the server status (e.g. "running", "stopped", "unknown").
 	Status(ctx context.Context, cfg *InstanceConfig) (string, error)
 
-	// SendCommand sends a raw command (e.g. RCON/telnet) and returns the response.
+	// SendCommand sends a raw command (e.g. RCON) and returns the response.
 	SendCommand(ctx context.Context, cfg *InstanceConfig, command string) (string, error)
 
 	// StreamChat streams chat (and optionally log) lines to w until ctx is done.

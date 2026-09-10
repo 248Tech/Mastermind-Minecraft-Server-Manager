@@ -33,19 +33,19 @@ export class UpdateServerInstanceDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  @Matches(/^[\w.-]+$/, { message: 'telnetHost must be hostname or IP' })
-  telnetHost?: string;
+  @Matches(/^[\w.-]+$/, { message: 'rconHost must be hostname or IP' })
+  rconHost?: string;
 
   @IsOptional()
   @IsInt()
   @Min(1)
   @Max(65535)
-  telnetPort?: number;
+  rconPort?: number;
 
   @IsOptional()
   @IsString()
   @MaxLength(256)
-  telnetPassword?: string;
+  rconPassword?: string;
 
   @IsOptional()
   @IsBoolean()

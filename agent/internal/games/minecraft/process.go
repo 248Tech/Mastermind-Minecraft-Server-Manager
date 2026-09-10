@@ -16,8 +16,8 @@ import (
 // gamePorts returns RCON and game listen ports to use for process lookup.
 func gamePorts(cfg *agent.InstanceConfig) []int {
 	ports := make([]int, 0, 2)
-	if cfg.TelnetPort > 0 {
-		ports = append(ports, cfg.TelnetPort)
+	if cfg.RconPort > 0 {
+		ports = append(ports, cfg.RconPort)
 	}
 	if cfg.Extra != nil {
 		switch v := cfg.Extra["server_port"].(type) {
@@ -186,7 +186,7 @@ func forceStopProcesses(cfg *agent.InstanceConfig) error {
 			errs = append(errs, err.Error())
 		}
 	}
-	host := cfg.TelnetHost
+	host := cfg.RconHost
 	if host == "" {
 		host = "127.0.0.1"
 	}

@@ -18,9 +18,9 @@ type MinecraftResult struct {
 	Name           string                 `json:"name,omitempty"`
 	InstallPath    string                 `json:"install_path,omitempty"`
 	StartCommand   string                 `json:"start_command,omitempty"`
-	TelnetHost     string                 `json:"telnet_host,omitempty"` // RCON host
-	TelnetPort     int                    `json:"telnet_port,omitempty"` // RCON port
-	TelnetPassword string                 `json:"telnet_password,omitempty"`
+	RconHost     string                 `json:"rcon_host,omitempty"`
+	RconPort     int                    `json:"rcon_port,omitempty"`
+	RconPassword string                 `json:"rcon_password,omitempty"`
 	Config         map[string]interface{} `json:"config,omitempty"`
 }
 
@@ -70,9 +70,9 @@ func DiscoverMinecraft(cfg config.MinecraftDiscoveryCfg) (*MinecraftResult, erro
 		Name:           name,
 		InstallPath:    installPath,
 		StartCommand:   startCommand,
-		TelnetHost:     "127.0.0.1",
-		TelnetPort:     rconPort,
-		TelnetPassword: props["rcon.password"],
+		RconHost:     "127.0.0.1",
+		RconPort:     rconPort,
+		RconPassword: props["rcon.password"],
 		Config: map[string]interface{}{
 			"game":              "minecraft",
 			"server_properties": propsPath,

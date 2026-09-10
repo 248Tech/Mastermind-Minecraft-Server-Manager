@@ -93,16 +93,16 @@ func main() {
 			slog.Warn("minecraft discovery failed", "err", err)
 		} else {
 			discoveredInstall = discovered.InstallPath
-			if discovered.TelnetHost != "" && discovered.TelnetPort > 0 {
-				gameProbe.Address = net.JoinHostPort(discovered.TelnetHost, strconv.Itoa(discovered.TelnetPort))
+			if discovered.RconHost != "" && discovered.RconPort > 0 {
+				gameProbe.Address = net.JoinHostPort(discovered.RconHost, strconv.Itoa(discovered.RconPort))
 			}
 			instanceID, err := cl.SyncDiscoveredServer(context.Background(), hostID, "minecraft", &client.DiscoveredServer{
 				Name:           discovered.Name,
 				InstallPath:    discovered.InstallPath,
 				StartCommand:   discovered.StartCommand,
-				TelnetHost:     discovered.TelnetHost,
-				TelnetPort:     discovered.TelnetPort,
-				TelnetPassword: discovered.TelnetPassword,
+				RconHost:       discovered.RconHost,
+				RconPort:       discovered.RconPort,
+				RconPassword:   discovered.RconPassword,
 				Config:         discovered.Config,
 			})
 			if err != nil {

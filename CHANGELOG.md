@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.0] - 2026-09-10
+
+### Changed
+
+- Renamed ServerInstance `telnet_*` columns to `rcon_*` (migration `20260910000008_rename_telnet_to_rcon`).
+- Control-plane job payloads and discovery sync use `rcon_host` / `rcon_port` / `rcon_password`.
+- Agent InstanceConfig primary fields are RCON; still accepts legacy `telnet_*` payload keys as fallback.
+- Hosts/Manage UI and production docs refer to RCON field names.
+
 ## [0.12.0] - 2026-09-10
 
 ### Removed

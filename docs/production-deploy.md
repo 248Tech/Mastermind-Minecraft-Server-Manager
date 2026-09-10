@@ -77,7 +77,7 @@ REDIS_PORT=6379
 
 - [ ] All `JWT_*` / encryption secrets changed from defaults
 - [ ] `BOOTSTRAP_ADMIN_PASSWORD` set once, then cleared from env after first login
-- [ ] RCON enabled in `server.properties`, password matches instance `telnet_*` fields
+- [ ] RCON enabled in `server.properties`, password matches instance `rcon_*` fields
 - [ ] Agent `MASTERMIND_MC_INSTALL_PATH` set; start command uses OS-native launcher (`.bat` on Windows)
 - [ ] Compose ports stay on loopback unless intentionally LAN-exposed
 - [ ] Mod upload volume (`mod_uploads`) has enough disk for ZIP staging
