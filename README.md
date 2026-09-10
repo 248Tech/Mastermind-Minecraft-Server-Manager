@@ -109,10 +109,10 @@ See [`docs/minecraft-adapter-config.md`](docs/minecraft-adapter-config.md) and [
 ├── control-plane/    # NestJS API (REST + WS), Prisma, jobs, pairing, alerts
 ├── web/              # Next.js frontend
 ├── discord-bot/      # Optional Discord slash-command bridge
-├── agent/            # Go host agent (Minecraft + legacy 7DTD adapters)
+├── agent/            # Go host agent (Minecraft RCON + process control)
 ├── infra/            # Docker Compose for local/prod
-├── docs/             # Architecture and adapter docs
-├── scripts/          # bootstrap.sh, start.sh, doctor.sh, …
+├── docs/             # Architecture, adapter, production deploy
+├── scripts/          # bring-up, restart-stack, prod-up, start-local-infra, …
 ├── Makefile
 └── README.md
 ```
@@ -122,13 +122,15 @@ See [`docs/minecraft-adapter-config.md`](docs/minecraft-adapter-config.md) and [
 ## Quickstart (Docker)
 
 ```bash
-cp .env.example .env
+cp infra/.env.example infra/.env
 # set JWT_SECRET, JWT_AGENT_SECRET, BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD
 make up
-# or: docker compose -f infra/docker-compose.yml up -d
+# or Windows: .\scripts\prod-up.ps1 -Build -Migrate
+# or: docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
 ```
 
-Web: http://localhost:3000 · API: http://localhost:3001
+Web: http://localhost:3000 · API: http://localhost:3001  
+Production notes: [docs/production-deploy.md](docs/production-deploy.md)
 
 ### Windows bring-up (no hardcoded Minecraft paths)
 
@@ -141,6 +143,9 @@ Web: http://localhost:3000 · API: http://localhost:3001
 .\scripts\bring-up.ps1
 # or force local infra:
 .\scripts\bring-up.ps1 -SkipDocker
+
+# Later restarts (dev):
+.\scripts\restart-stack.ps1 -WithAgent
 
 # Agent — copy example env and set YOUR install path (never commit this file)
 Copy-Item agent\.env.agent.example agent\.env.agent

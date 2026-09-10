@@ -111,10 +111,10 @@ services:
       retries: 3
       start_period: 15s
 
-  # Outbound-only public HTTPS ingress for Mastermind. The remotely managed
-  # tunnel token lives in a root-owned, gitignored file and is not exposed in
-  # the container command line or environment.
+  # Outbound-only public HTTPS ingress. Opt-in: docker compose --profile cloudflared
+  # Requires infra/secrets/cloudflare_tunnel_token (gitignored).
   cloudflared:
+    profiles: ["cloudflared"]
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     user: "0:0"

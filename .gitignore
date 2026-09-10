@@ -23,6 +23,7 @@ coverage.html
 .env.*.local
 !.env.example
 infra/secrets/
+!infra/secrets/README.md
 agent/config.local.yaml
 agent/config.local.yml
 agent/.env

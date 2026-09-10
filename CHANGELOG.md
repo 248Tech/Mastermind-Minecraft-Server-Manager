@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0] - 2026-09-10
+
+### Added
+
+- `scripts/restart-stack.ps1` — restart portable Postgres/Redis + control-plane + web (+ optional agent).
+- `scripts/prod-up.ps1` — production Docker Compose bring-up with optional migrate / cloudflared / discord-bot profiles.
+- `docs/production-deploy.md` — Docker vs Windows-portable production checklist (agent always on game host).
+
+### Changed
+
+- Cloudflare tunnel Compose service is opt-in (`--profile cloudflared`) so default `compose up` no longer requires a tunnel token file.
+- README quickstart points at `infra/.env.example` and production deploy docs.
+
 ## [0.5.0] - 2026-09-10
 
 ### Added

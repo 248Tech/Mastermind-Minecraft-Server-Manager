@@ -308,6 +308,7 @@ export class ServerInstancesService {
       telnetHost: string | null;
       telnetPort: number | null;
       telnetPassword: string | null;
+      mapEmbedUrl?: string | null;
     }>,
     installPath: string | null,
   ) {
