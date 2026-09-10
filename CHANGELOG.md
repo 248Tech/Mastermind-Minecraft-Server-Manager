@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0] - 2026-09-10
+
+### Removed
+
+- Player `entityId`, `lastInventory`, and `lastInventoryAt` (migration `20260910000006_drop_player_inventory_entity`).
+- 7DTD bag/belt inventory parsers (`player-inventory`) and dashboard `InventoryGrid`.
+- Inventory snapshot job persistence path.
+
+### Changed
+
+- Player inventory API returns **410 Gone**.
+- Roster position merge no longer keys on entity id.
+
 ## [0.10.0] - 2026-09-10
 
 ### Removed

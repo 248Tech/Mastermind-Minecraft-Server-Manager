@@ -22,7 +22,6 @@ import { SchedulerService } from '../scheduler/scheduler.service';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { pruneMap } from '../common/ttl-map';
-import { parseInventoryOutput, type InventorySnapshot } from '../players/player-inventory';
 import { parseMinecraftRoster, type PlayerRosterRow } from '../players/player-roster';
 import { decryptIntegrationSecret } from '../orgs/integration-crypto';
 import {
@@ -39,7 +38,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
   private readonly badPingSamples = new Map<string, number>();
   private readonly protectionCooldown = new Map<string, number>();
   private readonly countryCache = new Map<string, { code: string; expires: number }>();
-  private readonly inventoryCooldown = new Map<string, number>();
   private readonly deathPins = new Map<string, { deaths: number; until: number }>();
   private staleTimer?: NodeJS.Timeout;
   constructor(
@@ -413,9 +411,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
       }
     }
     const resultPayload = (run.job.payload ?? {}) as Record<string, unknown>;
-    if (run.job.type === 'RCON' && resultPayload.purpose === 'inventory_snapshot' && typeof resultPayload.playerId === 'string' && runStatus === 'success' && dto.output) {
-      await this.storeInventorySnapshot(resultPayload.playerId, dto.output);
-    }
     if (run.job.type === 'RCON' && resultPayload.purpose === 'shop_grant' && typeof resultPayload.donationLineId === 'string') {
       await this.finishShopGrant(resultPayload, runStatus, dto.output);
     }
@@ -516,7 +511,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           serverInstanceId,
           identityKey: row.identityKey,
           steamId: row.steamId,
-          entityId: row.entityId > 0 ? row.entityId : null,
           ipAddress: row.ipAddress,
           name: row.name,
           online: true,
@@ -528,7 +522,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         },
         update: {
           steamId: row.steamId ?? existing?.steamId,
-          ...(row.entityId > 0 ? { entityId: row.entityId } : {}),
           ...(row.ipAddress ? { ipAddress: row.ipAddress } : {}),
           name: row.name,
           online: true,
@@ -549,7 +542,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           id: player.id,
           name: player.name,
           steamId: player.steamId,
-          entityId: player.entityId,
           level: newLevel,
         }, previousLevel, newLevel).catch(() => undefined);
       }
@@ -584,25 +576,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     }
     await this.enqueuePendingShopGrants(orgId, serverInstanceId).catch(() => undefined);
     await this.triggers.retryPendingItemGrants(orgId, serverInstanceId).catch(() => undefined);
-  }
-
-  private async storeInventorySnapshot(playerId: string, output: string) {
-    await this.persistInventorySnapshot(playerId, parseInventoryOutput(output));
-  }
-
-  private async persistInventorySnapshot(playerId: string, snapshot: InventorySnapshot) {
-    const itemCount = snapshot.bag.length + snapshot.belt.length + snapshot.equipment.length;
-    // Do not replace a real snapshot with an empty one when a game build or
-    // missing mod rejects the inventory command. The agent classifies command
-    // errors as failed; this guard also protects against malformed responses.
-    if (!itemCount) return;
-    await this.prisma.player.updateMany({
-      where: { id: playerId },
-      data: {
-        lastInventory: snapshot,
-        lastInventoryAt: new Date(),
-      },
-    });
   }
 
   async enqueueShopGrants(orgId: string, serverInstanceId: string, playerId: string, _steamId: string) {
@@ -752,7 +725,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     const member=await this.prisma.userOrg.findFirst({where:{orgId},orderBy:{createdAt:'asc'},select:{userId:true}});
     if(!member)return;
     for(const row of rows){
-      const identifier=row.steamId||row.name||String(row.entityId);const key=`${serverInstanceId}:${identifier}`;
+      const identifier=row.steamId||row.name||row.identityKey;const key=`${serverInstanceId}:${identifier}`;
       if((this.protectionCooldown.get(key)||0)>Date.now())continue;
       if(settings.highPingEnabled&&row.ping!=null){
         const count=row.ping>settings.highPingThresholdMs?(this.badPingSamples.get(key)||0)+1:0;this.badPingSamples.set(key,count);

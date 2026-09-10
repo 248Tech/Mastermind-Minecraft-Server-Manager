@@ -1,5 +1,4 @@
 export type PlayerRosterRow = {
-  entityId: number;
   name: string;
   identityKey: string;
   steamId: string | null;
@@ -20,14 +19,6 @@ function text(...values: unknown[]): string {
     if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   }
   return '';
-}
-
-function int(...values: unknown[]): number {
-  for (const value of values) {
-    const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : NaN;
-    if (Number.isInteger(n)) return n;
-  }
-  return NaN;
 }
 
 export function rosterIdentityKey(steamId: string | null, name: string): string {
@@ -53,7 +44,6 @@ export function parseMinecraftRoster(result: unknown): PlayerRosterRow[] | null 
     const uuidRaw = text(row.uuid, row.id, row.playerUuid);
     const uuid = /^[0-9a-f-]{32,36}$/i.test(uuidRaw) ? uuidRaw.toLowerCase() : '';
     rows.push({
-      entityId: 0,
       name,
       identityKey: uuid ? `uuid:${uuid}` : `name:${name.toLowerCase()}`,
       steamId: null,
@@ -84,15 +74,12 @@ export function mergeRosterPositions(
 ): PlayerRosterRow[] {
   if (!locations.length) return rows;
   const bySteam = new Map<string, { x: number; y: number; z: number }>();
-  const byEntity = new Map<number, { x: number; y: number; z: number }>();
   const byName = new Map<string, { x: number; y: number; z: number }>();
   for (const loc of locations) {
     const pos = loc.position;
     if (!pos) continue;
     const steam = text(loc.steamId).replace(/^Steam_/i, '');
     if (steam) bySteam.set(steam, pos);
-    const entityId = int(loc.id);
-    if (Number.isInteger(entityId) && entityId > 0) byEntity.set(entityId, pos);
     const name = loc.name.trim().toLocaleLowerCase();
     if (name) byName.set(name, pos);
   }
@@ -100,7 +87,6 @@ export function mergeRosterPositions(
     if (row.position) return row;
     const position =
       (row.steamId ? bySteam.get(row.steamId) : undefined)
-      ?? byEntity.get(row.entityId)
       ?? byName.get(row.name.trim().toLocaleLowerCase())
       ?? null;
     return position ? { ...row, position } : row;

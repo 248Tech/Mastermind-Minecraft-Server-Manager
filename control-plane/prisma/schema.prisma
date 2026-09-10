@@ -298,7 +298,6 @@ model Player {
   serverInstanceId        String    @map("server_instance_id")
   identityKey             String    @map("identity_key")
   steamId                 String?   @map("steam_id")
-  entityId                Int?      @map("entity_id")
   ipAddress               String?   @map("ip_address")
   name                    String
   online                  Boolean   @default(false)
@@ -310,8 +309,6 @@ model Player {
   lastPosY                Float?    @map("last_pos_y")
   lastPosZ                Float?    @map("last_pos_z")
   lastLogoutAt            DateTime? @map("last_logout_at")
-  lastInventory           Json?     @map("last_inventory")
-  lastInventoryAt         DateTime? @map("last_inventory_at")
   supporter               Boolean   @default(false)
   supporterSince          DateTime? @map("supporter_since")
   totalDonatedCents       Int       @default(0) @map("total_donated_cents")

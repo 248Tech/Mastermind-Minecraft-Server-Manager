@@ -179,8 +179,6 @@ html[data-theme="light"] .mobile-menu-button { background:#fff;color:#0f172a;bor
 .player-toolbar input { flex: 1 1 220px; min-width: 0; }
 .player-toolbar select { flex: 0 1 180px; min-width: 0; max-width: 100%; }
 .player-toolbar input, .player-toolbar select { background: #0d0d14; color: #e2e8f0; border: 1px solid #303044; border-radius: 6px; padding: .55rem; }
-.player-inventory-panel { background: #08080c; border: 1px solid #334155; border-radius: 9px; padding: 1rem; margin-bottom: 1rem; }
-.player-inventory-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
 .player-card-list { display: grid; gap: .75rem; }
 .player-card {
   background: #111118;

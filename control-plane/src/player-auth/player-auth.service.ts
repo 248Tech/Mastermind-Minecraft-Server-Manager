@@ -68,7 +68,7 @@ export class PlayerAuthService {
     if (!/(?:^|\n)is_valid:true(?:\r?$|\n)/m.test(verification)) throw new UnauthorizedException('Steam could not verify this login');
     const player = await this.prisma.player.findFirst({
       where: { serverInstanceId, steamId: steam },
-      select: { id: true, steamId: true, entityId: true, name: true, online: true, serverInstance: { select: { id: true, name: true } } },
+      select: { id: true, steamId: true, name: true, online: true, serverInstance: { select: { id: true, name: true } } },
     });
     if (!player?.steamId) throw new UnauthorizedException('This Steam account has not played on this server');
     const access_token = this.jwt.sign(
@@ -254,11 +254,11 @@ export class PlayerAuthService {
         ...(sessionAuth === 'steam' ? { steamId: payload.steamId } : {}),
       },
       select: {
-        id: true, orgId: true, steamId: true, entityId: true, name: true, online: true, serverInstanceId: true,
+        id: true, orgId: true, steamId: true, name: true, online: true, serverInstanceId: true,
         identityKey: true,
         deaths: true, level: true, lifetimeSeconds: true,
         currentSessionStartedAt: true, firstSeenAt: true, lastSeenAt: true, lastLogoutAt: true,
-        lastPosX: true, lastPosY: true, lastPosZ: true, lastInventory: true, lastInventoryAt: true,
+        lastPosX: true, lastPosY: true, lastPosZ: true,
         supporter: true, supporterSince: true, totalDonatedCents: true, portalPasswordHash: true,
         serverInstance: { select: { name: true, mapEmbedUrl: true } },
       },
@@ -286,7 +286,6 @@ export class PlayerAuthService {
         playerId: player.id,
         steamId: player.steamId,
         uuid,
-        entityId: null,
         name: player.name,
         online: player.online,
         auth: 'name' as const,
@@ -324,7 +323,6 @@ export class PlayerAuthService {
     return {
       playerId: player.id,
       steamId: player.steamId,
-      entityId: player.online ? player.entityId : null,
       name: player.name,
       online: player.online,
       auth: 'steam' as const,
@@ -347,8 +345,6 @@ export class PlayerAuthService {
         lastLogoutAt: player.lastLogoutAt?.toISOString() ?? null,
         source: player.online ? 'last_reported' : 'last_logout',
       } : null,
-      inventory: player.lastInventory ?? null,
-      inventoryAt: player.lastInventoryAt?.toISOString() ?? null,
       donation: {
         status: player.supporter ? 'supporter' : 'ready',
         tiedTo: 'steam',
