@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Headers, Post, Query, Req, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, GoneException, Headers, Post, Query, Req, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PlayerAuthService } from './player-auth.service';
 import { AuthRateLimitService } from '../auth/auth-rate-limit.service';
@@ -55,14 +55,13 @@ export class PlayerAuthController {
   @Get('pois')
   pois(@Headers('authorization') authorization?: string) {
     if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player session required');
-    return this.auth.portalPOIs(authorization.slice(7));
+    throw new GoneException('POI search is not available for Minecraft servers');
   }
 
   @Get('pois/preview')
-  poiPreview(@Headers('authorization') authorization?: string, @Query('name') name?: string) {
+  poiPreview(@Headers('authorization') authorization?: string, @Query('name') _name?: string) {
     if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player session required');
-    if (!name?.trim()) throw new BadRequestException('POI name is required');
-    return this.auth.portalPOIPreview(authorization.slice(7), name.trim());
+    throw new GoneException('POI preview is not available for Minecraft servers');
   }
 
   @Post('mod-request')
@@ -79,17 +78,13 @@ export class PlayerAuthController {
   @Get('places')
   places(@Headers('authorization') authorization?: string) {
     if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player session required');
-    return this.auth.places(authorization.slice(7));
+    throw new GoneException('Claims, homes, and vehicles are not available for Minecraft servers');
   }
 
   @Post('vehicles/return')
-  returnVehicle(
-    @Headers('authorization') authorization?: string,
-    @Body('vehicleKey') vehicleKey?: string,
-  ) {
+  returnVehicle(@Headers('authorization') authorization?: string) {
     if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player session required');
-    if (typeof vehicleKey !== 'string' || !vehicleKey.trim()) throw new BadRequestException('Vehicle is required');
-    return this.auth.returnVehicle(authorization.slice(7), vehicleKey.trim());
+    throw new GoneException('Vehicle return is not available for Minecraft servers');
   }
 
   @Get('map/entities')

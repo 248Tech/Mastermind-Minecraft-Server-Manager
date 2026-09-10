@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0] - 2026-09-10
+
+### Added
+
+- Minecraft `PLAYER_LIST_SYNC` consumes structured agent `result.players` (name/UUID identity).
+
+### Changed
+
+- Join/leave log parsing is Minecraft-only; prefers `uuid:` identity and Discord alerts show Player + UUID.
+- Discord alert footer branded for Minecraft; Steam/EOS fields omitted when UUID is present.
+- Player portal profile drops bag/belt inventory UI; support copy is account-neutral.
+- Worlds/Saves table drops 7DTD “Game day” column.
+- Places / vehicles / POI player-auth routes return **410 Gone**.
+
+### Deprecated
+
+- `Org.avoidBloodMoonRestart` marked unused (column retained).
+
 ## [0.4.0] - 2026-09-10
 
 ### Added

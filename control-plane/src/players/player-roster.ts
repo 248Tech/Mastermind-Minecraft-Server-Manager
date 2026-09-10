@@ -57,6 +57,41 @@ export function rosterIdentityKey(steamId: string | null, eosId: string | null, 
   return `name:${name.toLowerCase()}`;
 }
 
+/** Minecraft agent PLAYER_LIST_SYNC / LIST_PLAYERS result shape: { players: [{ name, uuid? }] }. */
+export function parseMinecraftRoster(result: unknown): PlayerRosterRow[] | null {
+  const root = asRecord(result);
+  const list = Array.isArray(root?.players)
+    ? root!.players
+    : Array.isArray(result)
+      ? result
+      : null;
+  if (!list) return null;
+  const rows: PlayerRosterRow[] = [];
+  for (const item of list) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const name = text(row.name, row.player, row.username, row.displayName);
+    if (!name || name.length > 16) continue;
+    const uuidRaw = text(row.uuid, row.id, row.playerUuid);
+    const uuid = /^[0-9a-f-]{32,36}$/i.test(uuidRaw) ? uuidRaw.toLowerCase() : '';
+    rows.push({
+      entityId: 0,
+      name,
+      identityKey: uuid ? `uuid:${uuid}` : `name:${name.toLowerCase()}`,
+      steamId: null,
+      eosId: null,
+      ipAddress: null,
+      ping: null,
+      level: null,
+      zombieKills: 0,
+      playerKills: 0,
+      deaths: 0,
+      position: null,
+    });
+  }
+  return rows.slice(0, 256);
+}
+
 export function cleanRosterIp(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const value = raw.trim();

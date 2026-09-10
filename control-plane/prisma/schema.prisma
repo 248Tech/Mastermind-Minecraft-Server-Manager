@@ -21,6 +21,7 @@ model Org {
   frigateWebhookSecret String? @map("frigate_webhook_secret") // shared secret validated on incoming Frigate webhooks
   logRetentionDays    Int      @default(7) @map("log_retention_days")
   healthIntervalSec   Int      @default(10) @map("health_interval_sec")
+  // Legacy 7DTD field — unused for Minecraft. Kept for schema compatibility.
   avoidBloodMoonRestart Boolean @default(false) @map("avoid_blood_moon_restart")
   stabilityRestartEnabled Boolean @default(true) @map("stability_restart_enabled")
   stabilityRestartMemoryGiB Int @default(12) @map("stability_restart_memory_gib")

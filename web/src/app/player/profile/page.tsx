@@ -3,11 +3,8 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PortalFrame } from '../PortalFrame';
-import { InventoryGrid } from '../../../components/InventoryGrid';
 import './profile.css';
 
-type InventoryItem = { slot: string; count: number; name: string };
-type Inventory = { bag?: InventoryItem[]; belt?: InventoryItem[]; equipment?: InventoryItem[]; other?: InventoryItem[]; empty?: boolean };
 type Donation = {
   checkoutEnabled?: boolean;
   supporter?: boolean;
@@ -24,9 +21,6 @@ type Profile = {
   auth?: 'steam' | 'name';
   isAdmin?: boolean;
   stats?: {
-    level: number;
-    zombieKills: number;
-    playerKills: number;
     deaths: number;
     sessionSeconds: number;
     lifetimeSeconds: number;
@@ -34,8 +28,6 @@ type Profile = {
     lastSeenAt: string;
   };
   location: { x: number; y: number | null; z: number; lastLogoutAt: string | null; source: string } | null;
-  inventory: Inventory | null;
-  inventoryAt: string | null;
   donation: Donation;
 };
 const PRESETS = [500, 1000, 2500, 5000];
@@ -114,23 +106,13 @@ function PlayerProfileContent() {
   }
 
   const stats = profile.stats || {
-    level: 0,
-    zombieKills: 0,
-    playerKills: 0,
     deaths: 0,
     sessionSeconds: 0,
     lifetimeSeconds: 0,
     firstSeenAt: '',
     lastSeenAt: '',
   };
-  const inventory = profile.inventory;
   const donation = profile.donation;
-  const sections: Array<[string, InventoryItem[] | undefined]> = [
-    ['Bag', inventory?.bag],
-    ['Belt', inventory?.belt],
-    ['Equipment', inventory?.equipment],
-    ['Other', inventory?.other],
-  ];
   const selectedCents = custom.trim() ? Math.round(Number(custom) * 100) : amountCents;
   const checkoutReady = Boolean(donation?.checkoutEnabled);
 
@@ -230,26 +212,12 @@ function PlayerProfileContent() {
             </div>
           </section>
 
-          <section className="pp-card">
-            <h2>Last known inventory</h2>
-            <p className="pp-help">
-              {profile.inventoryAt
-                ? `Snapshot ${when(profile.inventoryAt)}`
-                : 'The server only records this when an inventory-capable command returns item data while you are online.'}
-            </p>
-            {!inventory || inventory.empty ? (
-              <p className="pp-empty">Inventory is empty or has not been captured yet.</p>
-            ) : (
-              <InventoryGrid sections={sections} />
-            )}
-          </section>
-
           <section className="pp-card pp-support">
             <h2>Support the server</h2>
             {donationResult === 'success' && <p className="pp-flash pp-flash-ok">Thanks. Your supporter badge appears after Stripe confirms the payment — refresh in a few seconds.</p>}
             {donationResult === 'cancel' && <p className="pp-flash pp-flash-bad">Checkout was cancelled. Nothing was charged.</p>}
             <p className="pp-help">
-              Support is voluntary and tied to this Steam account. Featured packages are in the{' '}
+              Support is voluntary and tied to this player account. Featured packages are in the{' '}
               <a href="/player/shop" style={{ color: '#fb923c' }}>donator shop</a>.
             </p>
             {donation?.supporter && (

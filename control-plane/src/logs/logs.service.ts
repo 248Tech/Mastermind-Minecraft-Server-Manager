@@ -206,35 +206,39 @@ export class LogsService {
         continue;
       }
 
-      const joined = /:\s*([A-Za-z0-9_]{1,16}) joined the game\b/i.test(line)
-        || /GMSG: Player '.*' joined the game/i.test(line)
-        || /PlayerSpawnedInWorld\s*\(reason:\s*(?:EnterMultiplayer|JoinMultiplayer)\b/i.test(line);
-      const left = /:\s*([A-Za-z0-9_]{1,16}) left the game\b/i.test(line)
-        || /PlayerDisconnected|GMSG: Player '.*' left/i.test(line);
+      const joined = /:\s*([A-Za-z0-9_]{1,16}) joined the game\b/i.test(line);
+      const left = /:\s*([A-Za-z0-9_]{1,16}) left the game\b/i.test(line);
       if (!joined && !left) continue;
 
-      const mcName = line.match(/:\s*([A-Za-z0-9_]{1,16}) (?:joined|left) the game\b/i)?.[1];
-      const steam = line.match(/(?:PltfmId|OwnerID)\s*=\s*'?Steam_([0-9]{15,20})'?/i)?.[1]
-        ?? line.match(/\b(7656119[0-9]{10})\b/)?.[1];
-      const eos = line.match(/(?:CrossId|PltfmId)\s*=\s*'?EOS_([a-f0-9]{20,64})'?/i)?.[1];
-      const entityText = line.match(/EntityID[=:]\s*([0-9]+)/i)?.[1];
-      const name = (mcName
-        ?? line.match(/PlayerName\s*=\s*'?([^',\r\n]+)'?/i)?.[1]
-        ?? line.match(/GMSG: Player '([^']+)'/i)?.[1])?.trim();
-      const identityKey = steam ? `steam:${steam}` : eos ? `eos:${eos}` : name ? `name:${name.toLowerCase()}` : '';
-      if (!identityKey || !name) continue;
-      await reconcileNameFallback(this.prisma, serverInstanceId, identityKey, name, steam ?? null, eos ?? null);
+      const name = line.match(/:\s*([A-Za-z0-9_]{1,16}) (?:joined|left) the game\b/i)?.[1]?.trim();
+      if (!name) continue;
+
+      const namedUuid = await this.prisma.player.findFirst({
+        where: {
+          serverInstanceId,
+          name: { equals: name, mode: 'insensitive' },
+          identityKey: { startsWith: 'uuid:' },
+        },
+        select: { identityKey: true, steamId: true, eosId: true, online: true, id: true, currentSessionStartedAt: true, lastSeenAt: true },
+        orderBy: { lastSeenAt: 'desc' },
+      });
+      const identityKey = namedUuid?.identityKey ?? `name:${name.toLowerCase()}`;
+      const minecraftUuid = identityKey.startsWith('uuid:') ? identityKey.slice(5) : undefined;
+      await reconcileNameFallback(this.prisma, serverInstanceId, identityKey, name, null, null);
       const now = new Date();
-      const existing = await this.prisma.player.findUnique({ where: { serverInstanceId_identityKey: { serverInstanceId, identityKey } } });
+      const existing = namedUuid
+        ?? await this.prisma.player.findUnique({ where: { serverInstanceId_identityKey: { serverInstanceId, identityKey } } });
       if (joined) {
         const player = await this.prisma.player.upsert({
           where: { serverInstanceId_identityKey: { serverInstanceId, identityKey } },
-          create: { orgId, serverInstanceId, identityKey, steamId: steam, eosId: eos, entityId: entityText ? Number(entityText) : null, name, online: true, currentSessionStartedAt: now, lastSeenAt: now },
-          update: { steamId: steam ?? existing?.steamId, eosId: eos ?? existing?.eosId, entityId: entityText ? Number(entityText) : existing?.entityId, name, online: true, lastSeenAt: now, ...(!existing?.online ? { currentSessionStartedAt: now } : {}) },
+          create: { orgId, serverInstanceId, identityKey, name, online: true, currentSessionStartedAt: now, lastSeenAt: now },
+          update: { name, online: true, lastSeenAt: now, ...(!existing?.online ? { currentSessionStartedAt: now } : {}) },
         });
         if (!existing?.online) {
           await this.prisma.playerSession.create({ data: { playerId: player.id, startedAt: now } });
-          await this.alerts.sendMatchingRules('PLAYER_CONNECTED', { orgId, serverInstanceId, serverInstanceName, playerName: name, steamId: steam, eosId: eos }).catch(() => undefined);
+          await this.alerts.sendMatchingRules('PLAYER_CONNECTED', {
+            orgId, serverInstanceId, serverInstanceName, playerName: name, minecraftUuid,
+          }).catch(() => undefined);
         }
       } else if (existing?.online) {
         const started = existing.currentSessionStartedAt;
@@ -243,7 +247,9 @@ export class LogsService {
           this.prisma.player.update({ where: { id: existing.id }, data: { online: false, lastSeenAt: now, currentSessionStartedAt: null, lastLogoutAt: now, lifetimeSeconds: { increment: duration } } }),
           this.prisma.playerSession.updateMany({ where: { playerId: existing.id, endedAt: null }, data: { endedAt: now, durationSeconds: duration } }),
         ]);
-        await this.alerts.sendMatchingRules('PLAYER_DISCONNECTED', { orgId, serverInstanceId, serverInstanceName, playerName: name, steamId: steam ?? existing.steamId ?? undefined, eosId: eos ?? existing.eosId ?? undefined, sessionSeconds: duration }).catch(() => undefined);
+        await this.alerts.sendMatchingRules('PLAYER_DISCONNECTED', {
+          orgId, serverInstanceId, serverInstanceName, playerName: name, minecraftUuid, sessionSeconds: duration,
+        }).catch(() => undefined);
       }
     }
   }

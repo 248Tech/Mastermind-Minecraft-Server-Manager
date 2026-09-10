@@ -19,6 +19,8 @@ export interface AlertContext {
   frigateLabel?: string;
   frigateScore?: number;
   playerName?: string;
+  /** Minecraft UUID when known (from logs or uuid: identityKey). */
+  minecraftUuid?: string;
   steamId?: string;
   eosId?: string;
   /** Completed play session length, primarily for disconnect alerts. */

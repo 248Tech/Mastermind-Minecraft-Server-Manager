@@ -23,7 +23,7 @@ import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { pruneMap } from '../common/ttl-map';
 import { parseInventoryOutput, type InventorySnapshot } from '../players/player-inventory';
-import { parseLpRoster, type PlayerRosterRow } from '../players/player-roster';
+import { parseLpRoster, parseMinecraftRoster, type PlayerRosterRow } from '../players/player-roster';
 import { decryptIntegrationSecret } from '../orgs/integration-crypto';
 import {
   MAX_GRANT_ATTEMPTS,
@@ -406,8 +406,8 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         }
       }
     }
-    if (run.job.type === 'PLAYER_LIST_SYNC' && runStatus === 'success' && dto.output && run.job.serverInstanceId) {
-      const rows = parseLpRoster(dto.output);
+    if (run.job.type === 'PLAYER_LIST_SYNC' && runStatus === 'success' && run.job.serverInstanceId) {
+      const rows = parseMinecraftRoster(dto.result) ?? (dto.output ? parseLpRoster(dto.output) : null);
       if (rows) {
         await this.applyPlayerRoster(run.job.orgId, run.job.serverInstanceId, rows);
         await this.enforceConnectionTools(run.job.orgId, run.job.serverInstanceId, rows);
@@ -523,14 +523,12 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           identityKey: row.identityKey,
           steamId: row.steamId,
           eosId: row.eosId,
-          entityId: row.entityId,
+          entityId: row.entityId > 0 ? row.entityId : null,
           ipAddress: row.ipAddress,
           name: row.name,
           online: true,
           currentSessionStartedAt: now,
           lastSeenAt: now,
-          zombieKills: row.zombieKills,
-          playerKills: row.playerKills,
           deaths: this.rosterDeaths(serverInstanceId, row.identityKey, null, row.deaths),
           level: row.level ?? 1,
           ...(row.position ? { lastPosX: row.position.x, lastPosY: row.position.y, lastPosZ: row.position.z } : {}),
@@ -538,15 +536,17 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         update: {
           steamId: row.steamId ?? existing?.steamId,
           eosId: row.eosId ?? existing?.eosId,
-          entityId: row.entityId,
+          ...(row.entityId > 0 ? { entityId: row.entityId } : {}),
           ...(row.ipAddress ? { ipAddress: row.ipAddress } : {}),
           name: row.name,
           online: true,
           lastSeenAt: now,
-          zombieKills: row.zombieKills,
-          playerKills: row.playerKills,
-          deaths: this.rosterDeaths(serverInstanceId, row.identityKey, existing?.id, row.deaths),
-          level: row.level ?? existing?.level ?? 1,
+          ...(row.level != null ? { level: row.level } : {}),
+          ...(row.zombieKills > 0 ? { zombieKills: row.zombieKills } : {}),
+          ...(row.playerKills > 0 ? { playerKills: row.playerKills } : {}),
+          ...(row.deaths > 0 || existing?.deaths == null
+            ? { deaths: this.rosterDeaths(serverInstanceId, row.identityKey, existing?.id, row.deaths) }
+            : {}),
           ...(row.position ? { lastPosX: row.position.x, lastPosY: row.position.y, lastPosZ: row.position.z } : {}),
           ...(!existing?.online ? { currentSessionStartedAt: now } : {}),
         },
@@ -554,16 +554,26 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
       if (!existing?.online) await this.prisma.playerSession.create({ data: { playerId: player.id, startedAt: now } });
       const previousLevel = existing?.level ?? 0;
       const newLevel = row.level ?? existing?.level ?? 1;
-      await this.triggers.evaluateLevel(orgId, serverInstanceId, {
-        id: player.id,
-        name: player.name,
-        steamId: player.steamId,
-        eosId: player.eosId,
-        entityId: player.entityId,
-        level: newLevel,
-      }, previousLevel, newLevel).catch(() => undefined);
+      if (row.level != null) {
+        await this.triggers.evaluateLevel(orgId, serverInstanceId, {
+          id: player.id,
+          name: player.name,
+          steamId: player.steamId,
+          eosId: player.eosId,
+          entityId: player.entityId,
+          level: newLevel,
+        }, previousLevel, newLevel).catch(() => undefined);
+      }
       if (!existing?.online) {
         await this.triggers.retryPendingItemGrantsForPlayer(player.id).catch(() => undefined);
+        const uuid = row.identityKey.startsWith('uuid:') ? row.identityKey.slice(5) : undefined;
+        await this.alerts.sendMatchingRules('PLAYER_CONNECTED', {
+          orgId,
+          serverInstanceId,
+          serverInstanceName: server?.name ?? 'Minecraft Server',
+          playerName: player.name,
+          minecraftUuid: uuid,
+        }).catch(() => undefined);
       }
     }
     const missing = await this.prisma.player.findMany({ where: { serverInstanceId, online: true, identityKey: { notIn: [...seen] } } });
@@ -579,8 +589,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         serverInstanceId,
         serverInstanceName: server?.name ?? 'Minecraft Server',
         playerName: player.name,
-        steamId: player.steamId ?? undefined,
-        eosId: player.eosId ?? undefined,
+        minecraftUuid: player.identityKey.startsWith('uuid:') ? player.identityKey.slice(5) : undefined,
         sessionSeconds: duration,
       }).catch(() => undefined);
     }

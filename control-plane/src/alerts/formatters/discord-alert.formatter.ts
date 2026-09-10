@@ -34,8 +34,10 @@ function buildEmbed(type: AlertType, ctx: AlertContext): DiscordEmbed {
   if (ctx.frigateLabel) fields.push({ name: 'Detected', value: String(ctx.frigateLabel), inline: true });
   if (ctx.frigateScore != null) fields.push({ name: 'Confidence', value: `${Math.round(Number(ctx.frigateScore) * 100)}%`, inline: true });
   if (ctx.playerName) fields.push({ name: 'Player', value: String(ctx.playerName), inline: true });
-  if (ctx.steamId) fields.push({ name: 'Steam ID', value: String(ctx.steamId), inline: false });
-  if (ctx.eosId) fields.push({ name: 'EOS ID', value: String(ctx.eosId), inline: false });
+  if (ctx.minecraftUuid) fields.push({ name: 'UUID', value: String(ctx.minecraftUuid), inline: false });
+  // Steam/EOS only when Minecraft UUID is absent (legacy optional Steam portal accounts).
+  if (!ctx.minecraftUuid && ctx.steamId) fields.push({ name: 'Steam ID', value: String(ctx.steamId), inline: false });
+  if (!ctx.minecraftUuid && ctx.eosId) fields.push({ name: 'EOS ID', value: String(ctx.eosId), inline: false });
   if (type === 'PLAYER_DISCONNECTED' && typeof ctx.sessionSeconds === 'number') {
     fields.push({ name: 'Session playtime', value: formatDuration(ctx.sessionSeconds), inline: true });
   }
@@ -49,7 +51,7 @@ function buildEmbed(type: AlertType, ctx: AlertContext): DiscordEmbed {
     title,
     color,
     fields: fields.length ? fields : undefined,
-    footer: { text: 'Mastermind Control Plane' },
+    footer: { text: 'Mastermind Minecraft' },
     timestamp: new Date().toISOString(),
   };
 }

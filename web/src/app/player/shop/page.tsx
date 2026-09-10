@@ -144,6 +144,8 @@ function PlayerShopContent() {
             ? `Signed in as ${profile.name}. Gifts apply to that in-game name.`
             : signedIn && steamLast4
               ? `Gifts are tied to Steam ending ${steamLast4}.`
+              : signedIn
+                ? `Signed in as ${profile?.name || 'player'}. Gifts apply to this account.`
               : 'Browse freely. Sign in with your Minecraft name to donate.'}
           {` · ${serverReachable ? 'Server online' : 'Server status unknown'} · ${playersOnline} player${playersOnline === 1 ? '' : 's'}`}
           {count > 0 && <> · <a href="/player/shop/cart" style={{ color: '#fb923c' }}>View cart ({count})</a></>}
@@ -189,7 +191,7 @@ function PlayerShopContent() {
               <p style={shopEyebrow}>OR GIVE ANY AMOUNT</p>
               <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem' }}>Custom gift</h2>
               <p style={{ color: '#94a3b8', margin: '0 0 14px', fontSize: 13, lineHeight: 1.5 }}>
-                {profile?.auth === 'name' ? 'Any amount from $5 to $500, tied to this in-game name.' : 'Any amount from $5 to $500. Still tied to this Steam account.'}
+                {profile?.auth === 'name' ? 'Any amount from $5 to $500, tied to this in-game name.' : 'Any amount from $5 to $500, tied to this player account.'}
               </p>
               <label style={{ display: 'block', color: '#94a3b8', fontSize: 12, marginBottom: 6 }}>USD</label>
               <input
