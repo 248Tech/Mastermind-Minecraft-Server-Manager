@@ -1,11 +1,12 @@
 # Mastermind Agent — example config (YAML or JSON)
-# Copy to /etc/mastermind-agent/config.yaml and set pairing_token for first run.
+# Copy to config.local.yaml (gitignored) or /etc/mastermind-agent/config.yaml
+# and set pairing_token for first run. Prefer env vars for secrets and paths.
 
-control_plane_url: "https://cp.example.com"
+control_plane_url: "http://127.0.0.1:3001"
 # Set once for initial pairing; remove or leave empty after key is stored
 pairing_token: ""
 # Where to store the signed agent key after successful pairing
-agent_key_path: "/var/lib/mastermind-agent/agent.key"
+agent_key_path: "./data/agent.key"
 
 heartbeat:
   interval_sec: 5  # 5–10 recommended
@@ -13,10 +14,8 @@ heartbeat:
 jobs:
   poll_interval_sec: 5
   long_poll_sec: 30   # 0 = short poll only; values above 120 are clamped
-  # Explicitly audited query jobs may run concurrently. State changes and
-  # arbitrary RCON/SEND_COMMAND jobs always remain serialized.
   max_concurrent_reads: 8
-  websocket: false     # future
+  websocket: false
 
 logs:
   enabled: false
@@ -31,15 +30,12 @@ discovery:
   enabled: true
   minecraft:
     enabled: true
-    # Same-box Minecraft autodiscovery example (NeoForge / Fabric / Paper):
-    # install_path: "B:/MC"
-    # server_properties_path: "B:/MC/server.properties"
-    # mods_path: "B:/MC/mods"
-    # plugins_path: "B:/MC/plugins"
-    # world_path: "B:/MC/world"
-    # start_command: "B:/MC/START-ATM10.bat"
-    # name: "All the Mods 10"
-  seven_dtd:
-    enabled: false
-    # install_path: "/home/steam/serverfiles"
-    # server_config_path: "/home/steam/serverfiles/serverconfig.xml"
+    # Set YOUR server root (or use MASTERMIND_MC_INSTALL_PATH):
+    # install_path: "C:/path/to/minecraft-server"
+    # Optional overrides (or MASTERMIND_MC_* env vars):
+    # server_properties_path: ""
+    # mods_path: ""
+    # plugins_path: ""
+    # world_path: ""
+    # start_command: ""
+    # name: ""

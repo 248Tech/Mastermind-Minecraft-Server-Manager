@@ -140,12 +140,14 @@ export class ServerInstancesService {
           telnetHost: dto.telnetHost?.trim() || '127.0.0.1',
           telnetPort: dto.telnetPort ?? 25575,
           telnetPassword: dto.telnetPassword ?? null,
+          mapEmbedUrl: this.mapEmbedHint(discoveryConfig),
           config: discoveryConfig as Prisma.InputJsonValue,
         },
       });
       return { created: true, serverInstanceId: created.id };
     }
 
+    const hint = this.mapEmbedHint(discoveryConfig);
     await this.prisma.serverInstance.update({
       where: { id: existing.id },
       data: {
@@ -163,11 +165,17 @@ export class ServerInstancesService {
           telnetPassword: dto.telnetPassword || null,
         }),
         ...(dto.name?.trim() && discoveredManaged && { name: dto.name.trim() }),
+        ...(!existing.mapEmbedUrl && hint ? { mapEmbedUrl: hint } : {}),
         config: discoveryConfig as Prisma.InputJsonValue,
       },
     });
 
     return { created: false, serverInstanceId: existing.id };
+  }
+
+  private mapEmbedHint(config: Record<string, unknown> | null | undefined): string | null {
+    const hint = config?.map_embed_hint;
+    return typeof hint === 'string' && hint.trim() ? hint.trim() : null;
   }
 
   async update(
@@ -188,6 +196,17 @@ export class ServerInstancesService {
     }
 
     const gameTypeId = dto.gameType ? await this.getGameTypeIdBySlug(dto.gameType) : undefined;
+    let nextConfig: Prisma.InputJsonValue | undefined;
+    if (dto.updateCommand !== undefined) {
+      const current =
+        existing.config && typeof existing.config === 'object' && !Array.isArray(existing.config)
+          ? { ...(existing.config as Record<string, unknown>) }
+          : {};
+      const cmd = dto.updateCommand?.trim() || '';
+      if (cmd) current.update_command = cmd;
+      else delete current.update_command;
+      nextConfig = current as Prisma.InputJsonValue;
+    }
     const updated = await this.prisma.serverInstance.update({
       where: { id },
       data: {
@@ -201,6 +220,7 @@ export class ServerInstancesService {
         ...(dto.telnetPassword !== undefined && { telnetPassword: dto.telnetPassword ?? null }),
         ...(dto.rebootIfDown !== undefined && { rebootIfDown: dto.rebootIfDown }),
         ...(dto.mapEmbedUrl !== undefined && { mapEmbedUrl: dto.mapEmbedUrl?.trim() || null }),
+        ...(nextConfig !== undefined && { config: nextConfig }),
       },
       include: { host: true, gameType: { select: { slug: true, capabilities: true } } },
     });
@@ -240,6 +260,7 @@ export class ServerInstancesService {
       maintenanceMode?: boolean;
       rebootIfDown?: boolean;
       mapEmbedUrl?: string | null;
+      config?: Prisma.JsonValue | null;
       createdAt: Date;
       updatedAt: Date;
       gameType?: { slug: string; capabilities: unknown };
@@ -249,6 +270,10 @@ export class ServerInstancesService {
     const capabilities = Array.isArray(row.gameType?.capabilities)
       ? (row.gameType.capabilities as string[])
       : [];
+    const cfg =
+      row.config && typeof row.config === 'object' && !Array.isArray(row.config)
+        ? (row.config as Record<string, unknown>)
+        : {};
     const out: Record<string, unknown> = {
       id: row.id,
       orgId: row.orgId,
@@ -259,6 +284,7 @@ export class ServerInstancesService {
       name: row.name,
       installPath: row.installPath,
       startCommand: row.startCommand,
+      updateCommand: typeof cfg.update_command === 'string' ? cfg.update_command : null,
       telnetHost: row.telnetHost,
       telnetPort: row.telnetPort,
       maintenanceMode: Boolean((row as { maintenanceMode?: boolean }).maintenanceMode),

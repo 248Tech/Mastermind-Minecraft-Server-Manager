@@ -24,6 +24,12 @@ export class UpdateServerInstanceDto {
   @IsString()
   startCommand?: string;
 
+  /** Pack update script relative to installPath (e.g. update.bat). Stored in config.update_command. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  updateCommand?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(255)

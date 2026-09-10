@@ -1,6 +1,7 @@
 package minecraft
 
 import (
+	"archive/zip"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -87,7 +88,7 @@ func pendingDir(cfg *agent.InstanceConfig) (string, error) {
 	return filepath.Join(root, ".pending"), nil
 }
 
-func listDirEntries(dir, folder string) ([]map[string]interface{}, error) {
+func listDirEntries(dir, kind, pathPrefix string) ([]map[string]interface{}, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -102,9 +103,12 @@ func listDirEntries(dir, folder string) ([]map[string]interface{}, error) {
 			continue
 		}
 		info, _ := e.Info()
+		// folder is the UI primary key (jar/folder name); kind is mods|plugins.
 		item := map[string]interface{}{
 			"name":   name,
-			"folder": folder,
+			"folder": name,
+			"kind":   kind,
+			"path":   pathPrefix + "/" + name,
 			"dir":    e.IsDir(),
 		}
 		if info != nil {
@@ -128,7 +132,7 @@ func (a *Adapter) ListQuarantinedMods(cfg *agent.InstanceConfig, payload map[str
 		if err != nil {
 			return nil, err
 		}
-		items, err := listDirEntries(dir, kind+"/.quarantine")
+		items, err := listDirEntries(dir, kind, kind+"/.quarantine")
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +149,7 @@ func (a *Adapter) ListPendingMods(cfg *agent.InstanceConfig) ([]map[string]inter
 	if err != nil {
 		return nil, err
 	}
-	return listDirEntries(dir, "mods/.pending")
+	return listDirEntries(dir, modKindMods, "mods/.pending")
 }
 
 func findActiveMod(cfg *agent.InstanceConfig, name, preferredKind string) (kind, path string, err error) {
@@ -210,7 +214,7 @@ func (a *Adapter) QuarantineMod(cfg *agent.InstanceConfig, payload map[string]in
 	if err := os.Rename(src, dest); err != nil {
 		return nil, fmt.Errorf("quarantine mod: %w", err)
 	}
-	return map[string]interface{}{"quarantined": name, "folder": kind}, nil
+	return map[string]interface{}{"quarantined": name, "folder": name, "kind": kind}, nil
 }
 
 func (a *Adapter) RestoreMod(cfg *agent.InstanceConfig, payload map[string]interface{}) (map[string]interface{}, error) {
@@ -225,12 +229,17 @@ func (a *Adapter) RestoreMod(cfg *agent.InstanceConfig, payload map[string]inter
 	}
 	dest := filepath.Join(active, name)
 	if _, err := os.Lstat(dest); !os.IsNotExist(err) {
-		return nil, fmt.Errorf("active mod already exists: %s", name)
+		if !getBool(payload, "forceOverride") && !getBool(payload, "force_override") {
+			return nil, fmt.Errorf("active mod already exists: %s", name)
+		}
+		if err := os.RemoveAll(dest); err != nil {
+			return nil, fmt.Errorf("remove active mod for override: %w", err)
+		}
 	}
 	if err := os.Rename(src, dest); err != nil {
 		return nil, fmt.Errorf("restore mod: %w", err)
 	}
-	return map[string]interface{}{"restored": name, "restoredAs": name, "folder": kind}, nil
+	return map[string]interface{}{"restored": name, "restoredAs": name, "folder": name, "kind": kind}, nil
 }
 
 func (a *Adapter) DeleteMod(cfg *agent.InstanceConfig, payload map[string]interface{}) (map[string]interface{}, error) {
@@ -286,9 +295,6 @@ func (a *Adapter) UploadMod(cfg *agent.InstanceConfig, payload map[string]interf
 		filename = "uploaded-mod.jar"
 	}
 	filename = filepath.Base(filename)
-	if err := validateModEntryName(filename); err != nil {
-		return nil, err
-	}
 	kind := payloadModKind(payload)
 	if kind == "" {
 		kind = modKindMods
@@ -306,20 +312,37 @@ func (a *Adapter) UploadMod(cfg *agent.InstanceConfig, payload map[string]interf
 	if err := os.MkdirAll(destRoot, 0755); err != nil {
 		return nil, err
 	}
-	dest := filepath.Join(destRoot, filename)
-	if _, err := os.Lstat(dest); !os.IsNotExist(err) {
-		return nil, fmt.Errorf("mod already exists: %s", filename)
-	}
 
 	sourcePath := strings.TrimSpace(getString(payload, "source_path", getString(payload, "archive_path", "")))
 	b64 := strings.TrimSpace(getString(payload, "base64", getString(payload, "contentBase64", "")))
 
+	var folders []string
 	switch {
+	case sourcePath != "" && (strings.HasSuffix(strings.ToLower(sourcePath), ".zip") || strings.HasSuffix(strings.ToLower(filename), ".zip")):
+		folders, err = extractJarsFromZip(sourcePath, destRoot)
+		if err != nil {
+			return nil, err
+		}
 	case sourcePath != "":
+		if err := validateModEntryName(filename); err != nil {
+			return nil, err
+		}
+		dest := filepath.Join(destRoot, filename)
+		if _, err := os.Lstat(dest); !os.IsNotExist(err) {
+			return nil, fmt.Errorf("mod already exists: %s", filename)
+		}
 		if err := copyFile(sourcePath, dest); err != nil {
 			return nil, err
 		}
+		folders = []string{filename}
 	case b64 != "":
+		if err := validateModEntryName(filename); err != nil {
+			return nil, err
+		}
+		dest := filepath.Join(destRoot, filename)
+		if _, err := os.Lstat(dest); !os.IsNotExist(err) {
+			return nil, fmt.Errorf("mod already exists: %s", filename)
+		}
 		data, err := base64.StdEncoding.DecodeString(b64)
 		if err != nil {
 			return nil, fmt.Errorf("decode base64: %w", err)
@@ -327,22 +350,67 @@ func (a *Adapter) UploadMod(cfg *agent.InstanceConfig, payload map[string]interf
 		if err := os.WriteFile(dest, data, 0644); err != nil {
 			return nil, err
 		}
+		folders = []string{filename}
 	default:
 		return nil, fmt.Errorf("source_path, archive_path, or base64 required")
 	}
 
 	result := map[string]interface{}{
-		"folders": []string{filename},
-		"count":   1,
+		"folders": folders,
+		"count":   len(folders),
 		"name":    filename,
+		"kind":    kind,
 	}
 	if pending {
 		result["pending"] = true
 	} else {
 		result["quarantined"] = true
-		result["folder"] = kind
+		result["folder"] = folders[0]
 	}
 	return result, nil
+}
+
+func extractJarsFromZip(zipPath, destRoot string) ([]string, error) {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return nil, fmt.Errorf("open zip: %w", err)
+	}
+	defer r.Close()
+	var folders []string
+	for _, f := range r.File {
+		name := filepath.Base(f.Name)
+		if f.FileInfo().IsDir() || !strings.HasSuffix(strings.ToLower(name), ".jar") {
+			continue
+		}
+		if err := validateModEntryName(name); err != nil {
+			continue
+		}
+		dest := filepath.Join(destRoot, name)
+		if _, err := os.Lstat(dest); !os.IsNotExist(err) {
+			return nil, fmt.Errorf("mod already exists: %s", name)
+		}
+		rc, err := f.Open()
+		if err != nil {
+			return nil, err
+		}
+		out, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0644)
+		if err != nil {
+			rc.Close()
+			return nil, err
+		}
+		_, copyErr := io.Copy(out, rc)
+		_ = out.Close()
+		_ = rc.Close()
+		if copyErr != nil {
+			_ = os.Remove(dest)
+			return nil, copyErr
+		}
+		folders = append(folders, name)
+	}
+	if len(folders) == 0 {
+		return nil, fmt.Errorf("zip contained no .jar mods")
+	}
+	return folders, nil
 }
 
 func (a *Adapter) ApprovePendingMod(cfg *agent.InstanceConfig, payload map[string]interface{}) (map[string]interface{}, error) {
@@ -376,7 +444,7 @@ func (a *Adapter) ApprovePendingMod(cfg *agent.InstanceConfig, payload map[strin
 	if err := os.Rename(src, dest); err != nil {
 		return nil, fmt.Errorf("approve pending mod: %w", err)
 	}
-	return map[string]interface{}{"approved": name, "folder": kind}, nil
+	return map[string]interface{}{"approved": name, "folder": name, "kind": kind}, nil
 }
 
 func (a *Adapter) RejectPendingMod(cfg *agent.InstanceConfig, payload map[string]interface{}) (map[string]interface{}, error) {

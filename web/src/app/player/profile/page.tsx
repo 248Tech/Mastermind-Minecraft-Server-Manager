@@ -38,14 +38,6 @@ type Profile = {
   inventoryAt: string | null;
   donation: Donation;
 };
-type Places = {
-  reachable: boolean;
-  claims: Array<{ id: string; position: { x: number; y: number; z: number }; size: number }>;
-  homes: Array<{ id: string; position: { x: number; y: number; z: number }; active: boolean }>;
-  vehicles: Array<{ id: string; name: string; position: { x: number; y: number; z: number }; vehicleKey?: string; live?: boolean; lastSeenAt?: string }>;
-  drones: Array<{ id: string; name: string; position: { x: number; y: number; z: number } }>;
-};
-
 const PRESETS = [500, 1000, 2500, 5000];
 
 function duration(seconds: number) {
@@ -94,10 +86,6 @@ function PlayerProfileContent() {
   const [custom, setCustom] = useState('');
   const [donating, setDonating] = useState(false);
   const [donateError, setDonateError] = useState('');
-  const [places, setPlaces] = useState<Places | null>(null);
-  const [returningKey, setReturningKey] = useState('');
-  const [returnMessage, setReturnMessage] = useState('');
-  const [returnOk, setReturnOk] = useState(false);
 
   useEffect(() => {
     fetch('/api/player-auth/me', { cache: 'no-store' })
@@ -107,12 +95,7 @@ function PlayerProfileContent() {
           return;
         }
         if (!response.ok) throw new Error('Could not load your profile');
-        const next = await response.json() as Profile;
-        setProfile(next);
-        if (next.auth === 'steam') {
-          const placesResponse = await fetch('/api/player-auth/places', { cache: 'no-store' });
-          if (placesResponse.ok) setPlaces(await placesResponse.json());
-        }
+        setProfile(await response.json() as Profile);
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not load your profile'))
       .finally(() => setChecking(false));
@@ -142,6 +125,15 @@ function PlayerProfileContent() {
   };
   const inventory = profile.inventory;
   const donation = profile.donation;
+  const sections: Array<[string, InventoryItem[] | undefined]> = [
+    ['Bag', inventory?.bag],
+    ['Belt', inventory?.belt],
+    ['Equipment', inventory?.equipment],
+    ['Other', inventory?.other],
+  ];
+  const selectedCents = custom.trim() ? Math.round(Number(custom) * 100) : amountCents;
+  const checkoutReady = Boolean(donation?.checkoutEnabled);
+
   async function donate() {
     setDonateError('');
     if (!Number.isInteger(selectedCents) || selectedCents < 500 || selectedCents > 50000) {
@@ -162,30 +154,6 @@ function PlayerProfileContent() {
     } catch (e) {
       setDonateError(e instanceof Error ? e.message : 'Could not start checkout');
       setDonating(false);
-    }
-  }
-
-  async function returnVehicle(vehicleKey: string) {
-    setReturnMessage('');
-    setReturnOk(false);
-    setReturningKey(vehicleKey);
-    try {
-      const response = await fetch('/api/player-auth/vehicles/return', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ vehicleKey }),
-      });
-      const data = await response.json().catch(() => ({})) as { message?: string };
-      if (!response.ok) throw new Error(data.message || 'Could not return that vehicle');
-      setReturnOk(true);
-      setReturnMessage(data.message || 'Vehicle returned.');
-      const placesResponse = await fetch('/api/player-auth/places', { cache: 'no-store' });
-      if (placesResponse.ok) setPlaces(await placesResponse.json());
-    } catch (e) {
-      setReturnOk(false);
-      setReturnMessage(e instanceof Error ? e.message : 'Could not return that vehicle');
-    } finally {
-      setReturningKey('');
     }
   }
 
@@ -255,89 +223,11 @@ function PlayerProfileContent() {
           </section>
 
           <section className="pp-card pp-span">
-            <h2>Places & vehicles</h2>
-            <p className="pp-help">Return works only while you are online. If the vehicle is still in the world it is brought to you; otherwise a replacement is added to your inventory.</p>
-            {returnMessage && <p className={`pp-flash ${returnOk ? 'pp-flash-ok' : 'pp-flash-bad'}`}>{returnMessage}</p>}
-            {!hasPlaces ? (
-              <p className="pp-empty">
-                {places && !places.reachable ? 'Land data is unavailable right now.' : 'No claims, bed, vehicles, or drones linked to this Steam account yet.'}
-                {' '}<a href="/player/map" style={{ color: '#fb923c' }}>Open the map</a>
-              </p>
-            ) : (
-              <>
-                {places!.claims.length > 0 && (
-                  <div className="pp-group">
-                    <p className="pp-group-title">Land claims</p>
-                    <div className="pp-list">
-                      {places!.claims.map((claim) => (
-                        <div key={claim.id} className="pp-row">
-                          <div className="pp-row-copy">
-                            <strong>Land claim</strong>
-                            <span>{coords(claim.position)} · {claim.size}×{claim.size}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {places!.homes.length > 0 && (
-                  <div className="pp-group">
-                    <p className="pp-group-title">Bed</p>
-                    <div className="pp-list">
-                      {places!.homes.map((home) => (
-                        <div key={home.id} className="pp-row">
-                          <div className="pp-row-copy">
-                            <strong>{home.active ? 'Active bed' : 'Inactive bed'}</strong>
-                            <span>{coords(home.position)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {places!.vehicles.length > 0 && (
-                  <div className="pp-group">
-                    <p className="pp-group-title">Vehicles</p>
-                    <div className="pp-list">
-                      {places!.vehicles.map((vehicle) => (
-                        <div key={vehicle.id} className="pp-row">
-                          <div className="pp-row-copy">
-                            <strong>{vehicle.name}</strong>
-                            <span>{coords(vehicle.position)}{vehicle.live === false ? ' · last seen' : ' · in world'}</span>
-                          </div>
-                          {vehicle.vehicleKey && vehicle.vehicleKey !== 'unknown' && (
-                            <button
-                              type="button"
-                              className="pp-btn pp-btn-blue"
-                              disabled={!profile.online || Boolean(returningKey)}
-                              title={profile.online ? 'Bring this vehicle to you' : 'Join the server to return a vehicle'}
-                              onClick={() => void returnVehicle(vehicle.vehicleKey!)}
-                            >
-                              {returningKey === vehicle.vehicleKey ? 'Returning…' : profile.online ? 'Return to me' : 'Join to return'}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {places!.drones.length > 0 && (
-                  <div className="pp-group">
-                    <p className="pp-group-title">Drones</p>
-                    <div className="pp-list">
-                      {places!.drones.map((drone) => (
-                        <div key={drone.id} className="pp-row">
-                          <div className="pp-row-copy">
-                            <strong>{drone.name}</strong>
-                            <span>{coords(drone.position)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            <h2>World map</h2>
+            <p className="pp-help">Open the live map when your server has BlueMap or Dynmap configured.</p>
+            <div className="pp-actions">
+              <a className="pp-btn pp-btn-primary" href="/player/map">Open map</a>
+            </div>
           </section>
 
           <section className="pp-card">

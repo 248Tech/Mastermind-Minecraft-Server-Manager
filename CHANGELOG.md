@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.3.0] - 2026-09-10
+
+### Added
+
+- Per-instance **pack update command** (`updateCommand` / `config.update_command`) editable in Manage; required for `SERVER_UPDATE`.
+- BlueMap/Dynmap/Squaremap **map embed hint** on discovery (fills `mapEmbedUrl` only when unset).
+- Mod ZIP uploads extract `.jar` files into quarantine/pending; list/actions use jar name as `folder`.
+- `MOD_RESTORE` supports `forceOverride` when replacing an active jar.
+- Log keyword matches can fire Discord alerts (`LOG_KEYWORD`).
+
+### Changed
+
+- Landing/portal copy is Minecraft-first (no 7DTD places/vehicles card).
+- Log keyword placeholder uses Minecraft examples.
+
+## [0.2.2] - 2026-09-10
+
+### Added
+
+- Process-based Stop/Kill fallback: after RCON `stop`, force-terminate listeners on game/RCON ports when needed.
+- Auto log tail of `logs/latest.log` after Minecraft discovery (no manual logs config required).
+- Windows bring-up scripts: `scripts/bring-up.ps1`, `scripts/start-local-infra.ps1`, `scripts/run-agent.ps1` (env-driven paths, no hardcoded installs).
+- `SAVE_BACKUP` result includes `save.id` for the Worlds UI.
+
+### Fixed
+
+- Windows discovery prefers `.bat`/`.cmd` launchers over `.sh`.
+- Operator-facing copy: RCON (not Telnet), Minecraft-only host help, health service name.
+
 ## [0.2.1] - 2026-09-10
 
 ### Changed

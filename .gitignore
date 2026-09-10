@@ -23,6 +23,11 @@ coverage.html
 .env.*.local
 !.env.example
 infra/secrets/
+agent/config.local.yaml
+agent/config.local.yml
+agent/.env
+agent/.env.agent
+agent/data/
 
 # IDE
 .idea/
@@ -52,6 +57,14 @@ control-plane/prisma/*.db-journal
 # Misc
 *.local
 .cache/
+tools/go/
+tools/pgsql/
+tools/pgsql-data/
+tools/pgsql.log
+tools/redis/
+tools/*.zip
+tools/*.msi
+tools/*.exe
 
 # Host-specific privilege policies contain deployment paths. Keep installed
 # copies local and publish only portable examples/documentation.

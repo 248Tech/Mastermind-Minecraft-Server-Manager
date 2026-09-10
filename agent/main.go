@@ -85,15 +85,18 @@ func main() {
 	cl := client.NewHTTPClient(cfg.ControlPlaneURL, agentKey)
 
 	var gameProbe heartbeat.GameProbe
+	var discoveredInstall string
+	var discoveredInstanceID string
 	if shouldDiscoverMinecraft(cfg) {
 		discovered, err := discovery.DiscoverMinecraft(cfg.Discovery.Minecraft)
 		if err != nil {
 			slog.Warn("minecraft discovery failed", "err", err)
 		} else {
+			discoveredInstall = discovered.InstallPath
 			if discovered.TelnetHost != "" && discovered.TelnetPort > 0 {
 				gameProbe.Address = net.JoinHostPort(discovered.TelnetHost, strconv.Itoa(discovered.TelnetPort))
 			}
-			err = cl.SyncDiscoveredServer(context.Background(), hostID, "minecraft", &client.DiscoveredServer{
+			instanceID, err := cl.SyncDiscoveredServer(context.Background(), hostID, "minecraft", &client.DiscoveredServer{
 				Name:           discovered.Name,
 				InstallPath:    discovered.InstallPath,
 				StartCommand:   discovered.StartCommand,
@@ -105,7 +108,8 @@ func main() {
 			if err != nil {
 				slog.Warn("minecraft discovery sync failed", "err", err)
 			} else {
-				slog.Info("minecraft discovery synced", "install_path", discovered.InstallPath, "name", discovered.Name)
+				discoveredInstanceID = instanceID
+				slog.Info("minecraft discovery synced", "install_path", discovered.InstallPath, "name", discovered.Name, "server_instance_id", instanceID)
 			}
 		}
 	}
@@ -123,8 +127,22 @@ func main() {
 
 	// Job polling loop (long-poll if configured)
 	go jobs.Loop(ctx, cl, hostID, cfg.Jobs.PollIntervalSec, cfg.Jobs.LongPollSec, exec, cfg.Jobs.MaxConcurrentReads)
-	if cfg.Logs.Enabled && cfg.Logs.Path != "" && cfg.Logs.ServerInstanceID != "" {
-		go logtail.Run(ctx, cl, hostID, cfg.Logs.ServerInstanceID, cfg.Logs.Path, time.Duration(cfg.Logs.PollIntervalSec)*time.Second)
+
+	// Log tail: explicit config wins; otherwise auto-bind latest.log after Minecraft discovery.
+	logPath := cfg.Logs.Path
+	logInstanceID := cfg.Logs.ServerInstanceID
+	logEnabled := cfg.Logs.Enabled
+	if !logEnabled && discoveredInstall != "" && discoveredInstanceID != "" {
+		candidate := filepath.Join(discoveredInstall, "logs", "latest.log")
+		if _, err := os.Stat(candidate); err == nil {
+			logEnabled = true
+			logPath = candidate
+			logInstanceID = discoveredInstanceID
+			slog.Info("auto-enabled minecraft log tail", "path", logPath, "server_instance_id", logInstanceID)
+		}
+	}
+	if logEnabled && logPath != "" && logInstanceID != "" {
+		go logtail.Run(ctx, cl, hostID, logInstanceID, logPath, time.Duration(cfg.Logs.PollIntervalSec)*time.Second)
 	}
 
 	<-ctx.Done()

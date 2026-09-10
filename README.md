@@ -26,7 +26,7 @@ Mastermind is a control panel for Minecraft servers. It lets an owner see what i
 ### Choose the setup that fits
 
 - **Just trying it locally?** Use the Docker Compose quickstart below.
-- **Running a real game host?** Install the Go agent on the host and pair it from the dashboard. Point discovery at your install (for example `B:\MC` / ATM10).
+- **Running a real game host?** Install the Go agent on the host and pair it from the dashboard. Point discovery at your install via `MASTERMIND_MC_INSTALL_PATH` (or `agent/config.local.yaml`).
 - **Hosting Mastermind on a VPS?** Follow [`docs/DIGITALOCEAN_DEPLOYMENT.md`](docs/DIGITALOCEAN_DEPLOYMENT.md), then keep RCON private on loopback.
 
 ---
@@ -69,15 +69,16 @@ rcon.password=your-secure-password
 
 On the agent, `telnet_*` server-instance fields store **RCON** host/port/password (same schema as the 7DTD fork).
 
-Agent discovery (optional) reads `server.properties` and can sync install path, MOTD name, world folder, and mod counts. Example env:
+Agent discovery (optional) reads `server.properties` and can sync install path, MOTD name, world folder, and mod counts. Configure via env (no hardcoded paths):
 
 ```bash
 MASTERMIND_MC_DISCOVERY_ENABLED=true
-MASTERMIND_MC_INSTALL_PATH=B:/MC
-MASTERMIND_MC_START_COMMAND=B:/MC/START-ATM10.bat
+MASTERMIND_MC_INSTALL_PATH=/path/to/your/minecraft-server
+MASTERMIND_MC_START_COMMAND=/path/to/your/minecraft-server/run.bat   # optional
+MASTERMIND_MC_NAME="My Pack Server"                                   # optional
 ```
 
-See [`docs/minecraft-adapter-config.md`](docs/minecraft-adapter-config.md).
+See [`docs/minecraft-adapter-config.md`](docs/minecraft-adapter-config.md) and [`agent/config.minecraft.example.yaml`](agent/config.minecraft.example.yaml).
 
 ### Adapter job coverage (v0.1.0)
 
@@ -129,8 +130,26 @@ make up
 
 Web: http://localhost:3000 · API: http://localhost:3001
 
----
+### Windows bring-up (no hardcoded Minecraft paths)
 
+```powershell
+# Optional when Docker Desktop is unavailable: portable Postgres+Redis under tools/
+.\scripts\start-local-infra.ps1
+
+# Control plane + web (uses Docker Compose for Postgres/Redis when available;
+# falls back to local infra automatically if docker is missing)
+.\scripts\bring-up.ps1
+# or force local infra:
+.\scripts\bring-up.ps1 -SkipDocker
+
+# Agent — copy example env and set YOUR install path (never commit this file)
+Copy-Item agent\.env.agent.example agent\.env.agent
+# edit MASTERMIND_MC_INSTALL_PATH=C:/path/to/your/minecraft-server
+# after pairing token from Hosts → Pair:
+.\scripts\run-agent.ps1
+```
+
+`MASTERMIND_MC_INSTALL_PATH` (and optional `MASTERMIND_MC_*` overrides) must be set per host. Committed examples use placeholders only.
 ## Security notes
 
 - Keep RCON bound to localhost (or a private network). Never expose RCON publicly.

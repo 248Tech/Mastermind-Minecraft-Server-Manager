@@ -126,7 +126,12 @@ export class AlertsService {
       this.prisma.org.findUnique({ where: { id: context.orgId }, select: { name: true } }),
       this.prisma.alertRule.findMany({ where: { orgId: context.orgId, enabled: true } }),
     ]);
-    const matching = rules.filter(rule => String((rule.condition as Record<string, unknown>)?.type ?? '').toUpperCase() === type);
+    const matching = rules.filter(rule => {
+      const condition = rule.condition as Record<string, unknown>;
+      if (String(condition?.type ?? '').toUpperCase() !== type) return false;
+      if (type === 'LOG_KEYWORD' && context.ruleId && rule.id !== context.ruleId) return false;
+      return true;
+    });
     const payload = formatDiscordAlert(type, { ...context, orgName: org?.name });
     for (const rule of matching) {
       const channel = rule.channel as Record<string, unknown>;
@@ -157,7 +162,7 @@ export class AlertsService {
       const result = await this.discord.send(webhookUrl, {
         embeds: [{ title: `💬 ${safeName}`, description: safeMessage, color: 0x5865f2,
           fields: [{ name: 'Server', value: context.serverInstanceName, inline: true }, { name: 'Channel', value: context.channel, inline: true }],
-          footer: { text: `7DTD player chat · ${context.playerId}` }, timestamp: new Date().toISOString() }],
+          footer: { text: `Minecraft player chat · ${context.playerId}` }, timestamp: new Date().toISOString() }],
       // Each persisted chat event gets its own local limiter key. Discord's
       // webhook response still enforces its real limit and uses normal retries;
       // busy player chat is no longer silently dropped by the alert-rule bucket.

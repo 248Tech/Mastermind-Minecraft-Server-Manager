@@ -14,7 +14,8 @@ type Client interface {
 	// Heartbeat sends host id + metadata. Uses stored key for auth.
 	Heartbeat(ctx context.Context, hostID string, meta *HostMetadata) error
 	// SyncDiscoveredServer sends locally discovered game server data to the control plane.
-	SyncDiscoveredServer(ctx context.Context, hostID string, gameType string, server *DiscoveredServer) error
+	// Returns the upserted server instance id when the control plane provides one.
+	SyncDiscoveredServer(ctx context.Context, hostID string, gameType string, server *DiscoveredServer) (string, error)
 	// PollJobs long-polls or short-polls for jobs for this host. Returns when at least one job is ready or timeout.
 	PollJobs(ctx context.Context, hostID string, longPollSec int, mutationBusy bool) ([]Job, error)
 	// DownloadJobFile streams a binary artifact assigned to a job without loading it into the JSON queue.

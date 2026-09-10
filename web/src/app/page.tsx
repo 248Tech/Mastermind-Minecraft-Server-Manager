@@ -61,7 +61,7 @@ export default function Home() {
           {orgName}
         </h1>
         <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b' }}>
-          7 Days to Die community portal
+          Minecraft community portal
         </p>
 
         <div style={{

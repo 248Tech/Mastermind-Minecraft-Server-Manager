@@ -1,6 +1,9 @@
 package hostinfo
 
-import "testing"
+import (
+	"runtime"
+	"testing"
+)
 
 func TestGatherContainsHostMetricsWithoutGameProbe(t *testing.T) {
 	meta, err := Gather()
@@ -10,7 +13,10 @@ func TestGatherContainsHostMetricsWithoutGameProbe(t *testing.T) {
 	if meta.CPU == "" {
 		t.Fatal("architecture must be populated")
 	}
-	if meta.DiskPath != "/" {
+	if meta.DiskPath == "" {
+		t.Fatal("disk path must be populated")
+	}
+	if runtime.GOOS != "windows" && meta.DiskPath != "/" {
 		t.Fatalf("unexpected disk path %q", meta.DiskPath)
 	}
 	if meta.GameReachable || meta.LatencyMS != 0 {

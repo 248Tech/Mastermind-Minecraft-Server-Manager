@@ -197,7 +197,23 @@ func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, 
 		if err != nil {
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
-		return agent.JobResult{Status: "success", Result: map[string]interface{}{"backup": path}}, nil
+		id := filepath.Base(path)
+		info, _ := os.Stat(path)
+		createdAt := time.Now().UTC().Format(time.RFC3339)
+		var size int64
+		if info != nil {
+			createdAt = info.ModTime().UTC().Format(time.RFC3339)
+			size = directorySize(path)
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{
+			"backup": path,
+			"save": map[string]interface{}{
+				"id":        id,
+				"createdAt": createdAt,
+				"kind":      "full-world",
+				"sizeBytes": size,
+			},
+		}}, nil
 	case "SAVE_RESTORE":
 		if !getBool(job.Payload, "confirmed") {
 			return agent.JobResult{Status: "failed", Error: "save restore requires explicit confirmation"}, nil
@@ -334,6 +350,14 @@ func payloadToConfig(p map[string]interface{}) *agent.InstanceConfig {
 			cfg.Extra = map[string]interface{}{}
 		}
 		cfg.Extra["update_command"] = v
+	}
+	if conf, ok := p["config"].(map[string]interface{}); ok {
+		if cfg.Extra == nil {
+			cfg.Extra = map[string]interface{}{}
+		}
+		for k, v := range conf {
+			cfg.Extra[k] = v
+		}
 	}
 	if extra, ok := p["extra"].(map[string]interface{}); ok {
 		if cfg.Extra == nil {
@@ -472,10 +496,26 @@ func (a *Adapter) Stop(ctx context.Context, cfg *agent.InstanceConfig) error {
 		cmd.Dir = cfg.InstallPath
 		return cmd.Run()
 	}
-	return a.withRCON(ctx, cfg, func(c *Client) error {
+	rconErr := a.withRCON(ctx, cfg, func(c *Client) error {
 		_, err := c.Exec("stop")
 		return err
 	})
+	host := cfg.TelnetHost
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	ports := gamePorts(cfg)
+	if rconErr == nil && waitPortsClosed(host, ports, 45*time.Second) {
+		return nil
+	}
+	// Graceful RCON failed or process still listening — force-stop by port PID.
+	if err := forceStopProcesses(cfg); err != nil {
+		if rconErr != nil {
+			return fmt.Errorf("rcon stop failed (%v); process stop failed (%w)", rconErr, err)
+		}
+		return err
+	}
+	return nil
 }
 
 func (a *Adapter) Kill(ctx context.Context, cfg *agent.InstanceConfig) error {
@@ -483,12 +523,17 @@ func (a *Adapter) Kill(ctx context.Context, cfg *agent.InstanceConfig) error {
 	if cfg.InstallPath == "" {
 		return fmt.Errorf("install_path required")
 	}
-	// Best-effort: stop via RCON first, then leave process kill to the operator/OS service.
+	// Best-effort graceful stop, then always force-kill listeners on game/RCON ports.
 	_ = a.withRCON(context.Background(), cfg, func(c *Client) error {
 		_, err := c.Exec("stop")
 		return err
 	})
-	return nil
+	host := cfg.TelnetHost
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	_ = waitPortsClosed(host, gamePorts(cfg), 5*time.Second)
+	return forceStopProcesses(cfg)
 }
 
 func (a *Adapter) Restart(ctx context.Context, cfg *agent.InstanceConfig) error {
@@ -788,7 +833,9 @@ func (a *Adapter) ListMods(cfg *agent.InstanceConfig) ([]map[string]interface{},
 			info, _ := e.Info()
 			item := map[string]interface{}{
 				"name":   name,
-				"folder": folder,
+				"folder": name,
+				"kind":   folder,
+				"path":   folder + "/" + name,
 				"dir":    e.IsDir(),
 			}
 			if info != nil {

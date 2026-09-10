@@ -239,7 +239,7 @@ JOB_TIMEOUT_SECONDS=600`;
       <div style={card}>
         <h2 style={{ margin: '0 0 0.375rem', fontSize: '1rem', fontWeight: 600, color: '#f1f5f9' }}>Maintenance mode</h2>
         <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#64748b' }}>
-          This password is written to <code>serverconfig.xml</code> as <code>ServerPassword</code> when you put a server in maintenance from the manager page. The live server then safely restarts. The password is encrypted here and never shown again.
+          This password is written into maintenance mode settings and applied when you put a server in maintenance from the manager page (whitelist / kick + MOTD). The live server then safely restarts. The password is encrypted here and never shown again.
         </p>
         <form onSubmit={async e=>{e.preventDefault();if(!orgId)return;setMaintenanceBusy(true);setMaintenanceMessage('');try{const saved=await api.post<{ok:boolean;configured:boolean}>(`/api/orgs/${orgId}/integrations/maintenance-password`,{password:maintenancePassword});setMaintenancePasswordConfigured(saved.configured);setMaintenancePassword('');setMaintenanceMessage('Maintenance password saved.');}catch(err){setMaintenanceMessage(err instanceof Error?err.message:'Could not save maintenance password');}finally{setMaintenanceBusy(false);}}} style={{display:'grid',gap:'.75rem',maxWidth:420}}>
           <div>
@@ -299,7 +299,7 @@ JOB_TIMEOUT_SECONDS=600`;
       {/* Stripe donations */}
       <div style={card}>
         <h2 style={{margin:'0 0 .375rem',fontSize:'1rem',fontWeight:600,color:'#f1f5f9'}}>Stripe Donations</h2>
-        <p style={{margin:'0 0 1rem',fontSize:'.8rem',color:'#64748b'}}>Store the Stripe secret key now. Add the webhook signing secret after you create the endpoint in Stripe. Payments stay tied to the signed-in Steam account. Keys are encrypted at rest and never shown again.</p>
+        <p style={{margin:'0 0 1rem',fontSize:'.8rem',color:'#64748b'}}>Store the Stripe secret key now. Add the webhook signing secret after you create the endpoint in Stripe. Payments stay tied to the signed-in player account. Keys are encrypted at rest and never shown again.</p>
         <form onSubmit={saveStripe} style={{display:'grid',gap:'.875rem'}}>
           <div><label style={labelStyle}>Secret key</label><input type="password" autoComplete="off" value={stripeSecretKey} onChange={e=>setStripeSecretKey(e.target.value)} placeholder={stripeConfigured?'Leave blank to keep existing key':'sk_live_… or sk_test_…'} style={inputStyle}/></div>
           <div><label style={labelStyle}>Webhook signing secret</label><input type="password" autoComplete="off" value={stripeWebhookSecret} onChange={e=>setStripeWebhookSecret(e.target.value)} placeholder={stripeWebhookConfigured?'Leave blank to keep existing secret':'Optional until the Stripe webhook exists — whsec_…'} style={inputStyle}/></div>

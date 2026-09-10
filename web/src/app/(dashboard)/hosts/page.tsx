@@ -247,8 +247,8 @@ function TutorialWizard({
     {
       icon: '◈',
       title: 'Step 3 — Register a Server Instance',
-      desc: 'Once your host is Online, click "+ Register Server" to tell Mastermind the install path, start command, and Telnet connection details for the game.',
-      detail: 'One host can run multiple game server instances — a 7DTD server and a Minecraft server on the same machine, for example.',
+      desc: 'Once your host is Online, click "+ Register Server" to tell Mastermind the install path, start command, and RCON connection details for the game.',
+      detail: 'One host can run multiple Minecraft server instances on the same machine.',
       actionLabel: 'Open register form',
     },
     {
@@ -402,7 +402,7 @@ function HowItWorksGuide({ onOpenTutorial }: { onOpenTutorial: () => void }) {
             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>— the game</span>
           </div>
           <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.6 }}>
-            A <strong style={{ color: '#e2e8f0' }}>Server Instance</strong> is a game server process (7 Days to Die, Minecraft, etc.) running on a host. One host can run multiple server instances. You tell Mastermind where the game is installed and how to talk to it via Telnet.
+            A <strong style={{ color: '#e2e8f0' }}>Server Instance</strong> is a Minecraft server process running on a host. One host can run multiple server instances. You tell Mastermind where the game is installed and how to talk to it via RCON.
           </p>
         </div>
       </div>
@@ -891,7 +891,7 @@ export default function HostsPage() {
                     <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#f1f5f9' }}>{si.name}</div>
                     {full && (
                       <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>
-                        {full.gameType} · {full.installPath || 'No install path'} · Telnet: {full.telnetHost ? `${full.telnetHost}:${full.telnetPort}` : 'Not configured'}
+                        {full.gameType} · {full.installPath || 'No install path'} · RCON: {full.telnetHost ? `${full.telnetHost}:${full.telnetPort}` : 'Not configured'}
                       </div>
                     )}
                   </div>
@@ -978,7 +978,7 @@ export default function HostsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Name', 'Game', 'Host', 'Install Path', 'Telnet', 'Actions'].map(h => (
+                  {['Name', 'Game', 'Host', 'Install Path', 'RCON', 'Actions'].map(h => (
                     <th key={h} style={thStyle}>{h}</th>
                   ))}
                 </tr>

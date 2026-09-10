@@ -1,5 +1,5 @@
 /** MVP alert types */
-export const ALERT_TYPES = ['SERVER_DOWN', 'SERVER_RESTART', 'AGENT_OFFLINE', 'FRIGATE_DETECTION', 'PLAYER_CONNECTED', 'PLAYER_DISCONNECTED'] as const;
+export const ALERT_TYPES = ['SERVER_DOWN', 'SERVER_RESTART', 'AGENT_OFFLINE', 'FRIGATE_DETECTION', 'PLAYER_CONNECTED', 'PLAYER_DISCONNECTED', 'LOG_KEYWORD'] as const;
 export type AlertType = (typeof ALERT_TYPES)[number];
 
 /** Context passed when sending an alert (used for structured formatting) */

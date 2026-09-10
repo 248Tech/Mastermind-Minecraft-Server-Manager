@@ -3,8 +3,10 @@ package discovery
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -85,9 +87,71 @@ func DiscoverMinecraft(cfg config.MinecraftDiscoveryCfg) (*MinecraftResult, erro
 			"max_players":       props["max-players"],
 			"motd":              motd,
 			"online_mode":       props["online-mode"],
+			"discovery": map[string]interface{}{
+				"managedByAgent": true,
+			},
 		},
 	}
+	if hint := detectMapEmbedHint(installPath, modsPath); hint != "" {
+		result.Config["map_embed_hint"] = hint
+	}
 	return result, nil
+}
+
+// detectMapEmbedHint looks for BlueMap/Dynmap/Squaremap under the install and returns a local URL hint.
+func detectMapEmbedHint(installPath, modsPath string) string {
+	lowerNames := map[string]bool{}
+	for _, dir := range []string{modsPath, filepath.Join(installPath, "mods"), filepath.Join(installPath, "plugins")} {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			lowerNames[strings.ToLower(e.Name())] = true
+		}
+	}
+	has := func(substr string) bool {
+		for name := range lowerNames {
+			if strings.Contains(name, substr) {
+				return true
+			}
+		}
+		return false
+	}
+	// Config dirs are a stronger signal than jar name alone.
+	if _, err := os.Stat(filepath.Join(installPath, "config", "bluemap")); err == nil || has("bluemap") {
+		port := readIntFromFile(filepath.Join(installPath, "config", "bluemap", "webserver.conf"), "port:", 8100)
+		return fmt.Sprintf("http://127.0.0.1:%d/", port)
+	}
+	if _, err := os.Stat(filepath.Join(installPath, "dynmap")); err == nil || has("dynmap") {
+		port := readIntFromFile(filepath.Join(installPath, "dynmap", "configuration.txt"), "webserver-port:", 8123)
+		return fmt.Sprintf("http://127.0.0.1:%d/", port)
+	}
+	if has("squaremap") {
+		return "http://127.0.0.1:8080/"
+	}
+	return ""
+}
+
+func readIntFromFile(path, key string, def int) int {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return def
+	}
+	key = strings.ToLower(key)
+	for _, line := range strings.Split(string(b), "\n") {
+		line = strings.TrimSpace(line)
+		lower := strings.ToLower(line)
+		if !strings.HasPrefix(lower, key) {
+			continue
+		}
+		rest := strings.TrimSpace(line[len(key):])
+		rest = strings.Trim(rest, "\"'")
+		if n, err := strconv.Atoi(rest); err == nil && n > 0 && n < 65536 {
+			return n
+		}
+	}
+	return def
 }
 
 func loadJavaProperties(path string) (map[string]string, error) {
@@ -130,18 +194,45 @@ func stripMOTDColor(s string) string {
 }
 
 func detectMinecraftStartCommand(installPath string) string {
-	candidates := []string{
-		"startserver.sh", "startserver.bat", "run.sh", "run.bat",
-		"START-ATM10.bat", "start.bat", "start.sh",
+	// Prefer OS-native launchers first so Windows hosts don't pick *.sh when a .bat exists.
+	var preferred []string
+	if runtime.GOOS == "windows" {
+		preferred = []string{
+			"startserver.bat", "run.bat", "start.bat", "start.cmd",
+			"startserver.sh", "run.sh", "start.sh",
+		}
+	} else {
+		preferred = []string{
+			"startserver.sh", "run.sh", "start.sh",
+			"startserver.bat", "run.bat", "start.bat", "start.cmd",
+		}
 	}
-	for _, name := range candidates {
+	for _, name := range preferred {
 		p := filepath.Join(installPath, name)
 		if _, err := os.Stat(p); err == nil {
-			ext := strings.ToLower(filepath.Ext(name))
-			if ext == ".bat" || ext == ".cmd" {
-				return p
+			return formatStartCommand(p)
+		}
+	}
+	entries, err := os.ReadDir(installPath)
+	if err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
 			}
-			return "/bin/sh " + p
+			name := e.Name()
+			lower := strings.ToLower(name)
+			if !strings.HasPrefix(lower, "start") {
+				continue
+			}
+			if runtime.GOOS == "windows" {
+				if strings.HasSuffix(lower, ".bat") || strings.HasSuffix(lower, ".cmd") {
+					return formatStartCommand(filepath.Join(installPath, name))
+				}
+				continue
+			}
+			if strings.HasSuffix(lower, ".sh") || strings.HasSuffix(lower, ".bat") || strings.HasSuffix(lower, ".cmd") {
+				return formatStartCommand(filepath.Join(installPath, name))
+			}
 		}
 	}
 	for _, jar := range []string{"server.jar", "paper.jar", "purpur.jar", "fabric-server-launch.jar"} {
@@ -150,6 +241,14 @@ func detectMinecraftStartCommand(installPath string) string {
 		}
 	}
 	return ""
+}
+
+func formatStartCommand(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext == ".bat" || ext == ".cmd" {
+		return path
+	}
+	return "/bin/sh " + path
 }
 
 func countEntries(dir string) (int, error) {

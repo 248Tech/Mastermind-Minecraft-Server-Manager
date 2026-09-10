@@ -11,7 +11,7 @@ export class HealthController {
   @Get()
   getRoot() {
     return {
-      service: 'Mastermind 7DTD Server Manager — Control Plane',
+      service: 'Mastermind Minecraft Server Manager — Control Plane',
       version: pkg.version,
       status: 'ok',
       at: new Date().toISOString(),

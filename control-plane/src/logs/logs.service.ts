@@ -291,6 +291,10 @@ export class LogsService {
     const prior = this.scanTails.get(serverInstanceId) ?? '';
     const searchable = prior + content;
     this.scanTails.set(serverInstanceId, searchable.slice(-256));
+    const server = await this.prisma.serverInstance.findFirst({
+      where: { id: serverInstanceId, orgId },
+      select: { id: true, name: true },
+    });
     const rules = await this.prisma.alertRule.findMany({ where: { orgId, enabled: true } });
     for (const rule of rules) {
       const condition = rule.condition as Record<string, unknown>;
@@ -303,11 +307,21 @@ export class LogsService {
       if (index < 0 || index + needle.length <= prior.length) continue;
       const start = Math.max(0, index - 180);
       const end = Math.min(searchable.length, index + needle.length + 180);
+      const excerpt = searchable.slice(start, end);
       await this.prisma.event.create({ data: {
         orgId, sourceType: 'server_instance', sourceId: serverInstanceId,
         eventType: 'log_keyword_match',
-        payload: { ruleId: rule.id, ruleName: rule.name, keyword, excerpt: searchable.slice(start, end) },
+        payload: { ruleId: rule.id, ruleName: rule.name, keyword, excerpt },
       }});
+      await this.alerts.sendMatchingRules('LOG_KEYWORD', {
+        orgId,
+        serverInstanceId,
+        serverInstanceName: server?.name,
+        ruleId: rule.id,
+        keyword,
+        ruleName: rule.name,
+        excerpt,
+      }).catch(() => undefined);
     }
   }
 

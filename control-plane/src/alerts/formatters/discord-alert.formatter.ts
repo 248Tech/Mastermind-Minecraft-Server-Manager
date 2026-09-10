@@ -10,6 +10,7 @@ const COLORS = {
   FRIGATE_DETECTION: 0x3498db, // blue
   PLAYER_CONNECTED: 0x2ecc71,  // green
   PLAYER_DISCONNECTED: 0x95a5a6, // gray
+  LOG_KEYWORD: 0xe67e22,       // carrot
 } as const;
 
 export function formatDiscordAlert(type: AlertType, context: AlertContext): DiscordWebhookPayload {
@@ -37,6 +38,11 @@ function buildEmbed(type: AlertType, ctx: AlertContext): DiscordEmbed {
   if (ctx.eosId) fields.push({ name: 'EOS ID', value: String(ctx.eosId), inline: false });
   if (type === 'PLAYER_DISCONNECTED' && typeof ctx.sessionSeconds === 'number') {
     fields.push({ name: 'Session playtime', value: formatDuration(ctx.sessionSeconds), inline: true });
+  }
+  if (type === 'LOG_KEYWORD') {
+    if (ctx.keyword) fields.push({ name: 'Keyword', value: String(ctx.keyword), inline: true });
+    if (ctx.ruleName) fields.push({ name: 'Rule', value: String(ctx.ruleName), inline: true });
+    if (ctx.excerpt) fields.push({ name: 'Log excerpt', value: '```\n' + String(ctx.excerpt).slice(0, 900) + '\n```', inline: false });
   }
 
   return {
@@ -70,6 +76,8 @@ function getTitle(type: AlertType): string {
       return '🟢 Player connected';
     case 'PLAYER_DISCONNECTED':
       return '⚪ Player disconnected';
+    case 'LOG_KEYWORD':
+      return '🔎 Log keyword match';
     default:
       return `Alert: ${type}`;
   }

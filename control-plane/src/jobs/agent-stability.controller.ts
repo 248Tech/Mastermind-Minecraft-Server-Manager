@@ -22,7 +22,7 @@ export class AgentStabilityController {
       where: { id: serverInstanceId, hostId, gameType: { slug: 'minecraft' } },
       include: { org: { select: { stabilityRestartEnabled: true, stabilityRestartMemoryGiB: true, stabilityRestartCooldownMinutes: true } } },
     });
-    if (!server) throw new NotFoundException('7DTD server instance not found on this host');
+    if (!server) throw new NotFoundException('Minecraft server instance not found on this host');
     if (!server.org.stabilityRestartEnabled) return { triggered: false, reason: 'disabled' };
 
     const limitBytes = server.org.stabilityRestartMemoryGiB * 1024 * 1024 * 1024;

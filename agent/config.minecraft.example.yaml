@@ -1,0 +1,49 @@
+# Example Mastermind agent config for a Minecraft Java host.
+# Copy to a private file (e.g. agent/config.local.yaml) and fill in YOUR paths.
+# Do not commit real install paths or RCON passwords.
+#
+# Or set the same values via environment variables:
+#   MASTERMIND_CP_URL
+#   MASTERMIND_PAIRING_TOKEN
+#   MASTERMIND_MC_DISCOVERY_ENABLED=true
+#   MASTERMIND_MC_INSTALL_PATH
+#   MASTERMIND_MC_SERVER_PROPERTIES
+#   MASTERMIND_MC_MODS_PATH
+#   MASTERMIND_MC_WORLD_PATH
+#   MASTERMIND_MC_START_COMMAND
+#   MASTERMIND_MC_NAME
+
+control_plane_url: "http://127.0.0.1:3001"
+pairing_token: ""   # one-time token from dashboard Hosts → Pair agent
+agent_key_path: "./data/agent.key"
+
+heartbeat:
+  interval_sec: 5
+
+jobs:
+  poll_interval_sec: 5
+  long_poll_sec: 30
+  max_concurrent_reads: 8
+
+logs:
+  enabled: false
+  path: ""
+  server_instance_id: ""
+  poll_interval_sec: 2
+
+host:
+  name: ""   # optional display name
+
+discovery:
+  enabled: true
+  minecraft:
+    enabled: true
+    # Absolute path to the Minecraft server root (contains server.properties).
+    install_path: "C:/path/to/your/minecraft-server"
+    # Optional overrides — leave blank to derive from install_path:
+    # server_properties_path: "C:/path/to/your/minecraft-server/server.properties"
+    # mods_path: "C:/path/to/your/minecraft-server/mods"
+    # plugins_path: "C:/path/to/your/minecraft-server/plugins"
+    # world_path: "C:/path/to/your/minecraft-server/world"
+    # start_command: "C:/path/to/your/minecraft-server/run.bat"
+    # name: "My Minecraft Server"

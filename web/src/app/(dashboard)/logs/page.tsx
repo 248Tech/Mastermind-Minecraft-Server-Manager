@@ -146,7 +146,7 @@ export default function LogsPage() {
       <div style={{background:'#111118',border:'1px solid #1e1e2a',borderRadius:8,padding:'1rem'}}>
         <strong style={{color:'#f1f5f9'}}>Keyword alerts</strong>
         <form onSubmit={addRule} style={{display:'flex',gap:8,margin:'0.75rem 0'}}>
-          <input value={keyword} onChange={e=>setKeyword(e.target.value)} maxLength={200} placeholder="incorrect region header" style={{flex:1,background:'#08080c',color:'#e2e8f0',border:'1px solid #252532',borderRadius:6,padding:'.5rem'}}/>
+          <input value={keyword} onChange={e=>setKeyword(e.target.value)} maxLength={200} placeholder="Exception or Can't keep up" style={{flex:1,background:'#08080c',color:'#e2e8f0',border:'1px solid #252532',borderRadius:6,padding:'.5rem'}}/>
           <label style={{color:'#94a3b8',display:'flex',alignItems:'center',gap:5,fontSize:'.8rem'}}><input type="checkbox" checked={caseSensitive} onChange={e=>setCaseSensitive(e.target.checked)}/>Case</label>
           <button style={{background:'#6366f1',color:'white',border:0,borderRadius:6,padding:'0 .8rem'}}>Add</button>
         </form>
@@ -168,7 +168,7 @@ export default function LogsPage() {
     <div style={{background:'#111118',border:'1px solid #252532',borderRadius:8,padding:'.75rem',marginTop:'.75rem'}}>
       <div style={{maxHeight:180,overflow:'auto',marginBottom:consoleEntries.length?'.65rem':0}}>{consoleEntries.map(entry=><div key={entry.id} style={{marginBottom:'.55rem',fontFamily:'monospace',fontSize:'.78rem'}}><div style={{color:'#818cf8'}}>&gt; {entry.command}</div><div style={{color:entry.failed?'#f87171':'#cbd5e1',whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{entry.output}</div></div>)}</div>
       <form onSubmit={sendCommand} style={{display:'flex',gap:8}}>
-        <input value={command} onChange={e=>setCommand(e.target.value.replace(/[\r\n]/g,''))} maxLength={512} disabled={!serverId||commandBusy} placeholder="Send telnet command (example: say Hello)" aria-label="Telnet console command" style={{flex:1,minWidth:0,background:'#08080c',color:'#e2e8f0',border:'1px solid #252532',borderRadius:6,padding:'.6rem'}}/>
+        <input value={command} onChange={e=>setCommand(e.target.value.replace(/[\r\n]/g,''))} maxLength={512} disabled={!serverId||commandBusy} placeholder="Send RCON command (example: say Hello)" aria-label="RCON console command" style={{flex:1,minWidth:0,background:'#08080c',color:'#e2e8f0',border:'1px solid #252532',borderRadius:6,padding:'.6rem'}}/>
         <button disabled={!serverId||!command.trim()||commandBusy} style={{background:'#4f46e5',color:'white',border:0,borderRadius:6,padding:'0 1rem',cursor:commandBusy?'wait':'pointer'}}>{commandBusy?'Sending…':'Send'}</button>
       </form>
     </div>

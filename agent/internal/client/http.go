@@ -181,13 +181,13 @@ func (c *HTTPClient) Heartbeat(ctx context.Context, hostID string, meta *HostMet
 	return nil
 }
 
-// SyncDiscoveredServer implements Client.
-func (c *HTTPClient) SyncDiscoveredServer(ctx context.Context, hostID string, gameType string, server *DiscoveredServer) error {
+// SyncDiscoveredServer implements Client. Returns the control-plane server instance id when present.
+func (c *HTTPClient) SyncDiscoveredServer(ctx context.Context, hostID string, gameType string, server *DiscoveredServer) (string, error) {
 	ctx, cancel := c.timeoutContext(ctx, c.ordinaryTimeout())
 	defer cancel()
 	body, err := json.Marshal(server)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req, err := http.NewRequestWithContext(
 		ctx,
@@ -196,19 +196,28 @@ func (c *HTTPClient) SyncDiscoveredServer(ctx context.Context, hostID string, ga
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.AgentKey)
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer closeResponse(resp.Body)
 	if !isSuccess(resp.StatusCode) {
-		return responseError("sync discovered server", resp)
+		return "", responseError("sync discovered server", resp)
 	}
-	return nil
+	var payload struct {
+		ID               string `json:"id"`
+		ServerInstanceID string `json:"serverInstanceId"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&payload)
+	id := strings.TrimSpace(payload.ServerInstanceID)
+	if id == "" {
+		id = strings.TrimSpace(payload.ID)
+	}
+	return id, nil
 }
 
 // PollJobs implements Client. Uses GET with timeout query for long-poll.
