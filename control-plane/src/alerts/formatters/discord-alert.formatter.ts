@@ -7,7 +7,6 @@ const COLORS = {
   SERVER_DOWN: 0xe74c3c,       // red
   SERVER_RESTART: 0xf39c12,    // orange
   AGENT_OFFLINE: 0x9b59b6,     // purple
-  FRIGATE_DETECTION: 0x3498db, // blue
   PLAYER_CONNECTED: 0x2ecc71,  // green
   PLAYER_DISCONNECTED: 0x95a5a6, // gray
   LOG_KEYWORD: 0xe67e22,       // carrot
@@ -30,9 +29,6 @@ function buildEmbed(type: AlertType, ctx: AlertContext): DiscordEmbed {
   if (ctx.hostId) fields.push({ name: 'Host ID', value: ctx.hostId, inline: false });
   if (ctx.lastHeartbeatAt) fields.push({ name: 'Last heartbeat', value: String(ctx.lastHeartbeatAt), inline: false });
   if (ctx.reason) fields.push({ name: 'Reason', value: String(ctx.reason), inline: false });
-  if (ctx.frigateCamera) fields.push({ name: 'Camera', value: String(ctx.frigateCamera), inline: true });
-  if (ctx.frigateLabel) fields.push({ name: 'Detected', value: String(ctx.frigateLabel), inline: true });
-  if (ctx.frigateScore != null) fields.push({ name: 'Confidence', value: `${Math.round(Number(ctx.frigateScore) * 100)}%`, inline: true });
   if (ctx.playerName) fields.push({ name: 'Player', value: String(ctx.playerName), inline: true });
   if (ctx.minecraftUuid) fields.push({ name: 'UUID', value: String(ctx.minecraftUuid), inline: false });
   // Steam/EOS only when Minecraft UUID is absent (legacy optional Steam portal accounts).
@@ -72,8 +68,6 @@ function getTitle(type: AlertType): string {
       return '🟠 Server restart';
     case 'AGENT_OFFLINE':
       return '🟣 Agent offline';
-    case 'FRIGATE_DETECTION':
-      return '📷 Frigate detection event';
     case 'PLAYER_CONNECTED':
       return '🟢 Player connected';
     case 'PLAYER_DISCONNECTED':

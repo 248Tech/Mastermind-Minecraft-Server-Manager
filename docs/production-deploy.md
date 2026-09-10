@@ -5,7 +5,7 @@ Two supported layouts:
 | Layout | When to use |
 |--------|-------------|
 | **Docker Compose** (`infra/`) | Linux VPS / Docker Desktop with Compose. Runs Postgres, Redis, control-plane, web. |
-| **Portable Windows** (`scripts/start-local-infra.ps1` + `bring-up.ps1 -SkipDocker`) | Windows hosts where Docker Desktop is unavailable; uses `tools/pgsql` + `tools/redis`. |
+| **Portable Windows** (`scripts/start-local-infra.ps1` + `bring-up.ps1 -SkipDocker`) | Windows hosts where Docker Desktop is unavailable; uses `tools/pgsql` + `tools/redis` (**Redis ≥ 6.2**; run `scripts/install-portable-redis.ps1` if you still have 5.x). |
 
 The **Go agent always runs on the Minecraft host** (outside Compose). It needs filesystem access to the pack install (`MASTERMIND_MC_INSTALL_PATH`) and local RCON.
 

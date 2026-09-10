@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0] - 2026-09-10
+
+### Removed
+
+- Frigate NVR integration (module, webhook, org settings/test endpoint, alert type).
+- `Org.frigate_*` and `Org.avoidBloodMoonRestart` columns (migration `20260910000003_drop_legacy_integrations`).
+
+### Changed
+
+- Triggers grant UI/copy is Minecraft-native (no quality suffix); grant configs persist `quality: null`.
+- Portable Redis must be ≥ 6.2; `scripts/install-portable-redis.ps1` installs Redis 7.0.15; `start-local-infra.ps1` fails fast on older builds.
+- `restart-stack.ps1` health check uses `/api/health` and starts CP/web via `pnpm` redirects (more reliable on Windows).
+
 ## [0.7.0] - 2026-09-10
 
 ### Added

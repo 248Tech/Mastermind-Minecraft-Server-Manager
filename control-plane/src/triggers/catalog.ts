@@ -37,7 +37,7 @@ export function parseGrantItemsActionConfig(raw: unknown): GrantItemsActionConfi
   }
   const message = typeof data.message === 'string' ? data.message.trim().slice(0, 200) : '';
   return {
-    items,
+    items: items.map((item) => ({ ...item, quality: null })),
     notifyPlayer: data.notifyPlayer !== false,
     message: message || 'You reached a reward level.',
   };

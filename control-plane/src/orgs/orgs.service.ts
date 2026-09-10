@@ -238,7 +238,6 @@ export class OrgsService {
       slug: userOrg.org.slug,
       discordWebhookUrl: userOrg.role.name === 'admin' ? userOrg.org.discordWebhookUrl : undefined,
       discordWebhookConfigured: Boolean(userOrg.org.discordWebhookUrl),
-      frigateConfigured: Boolean(userOrg.org.frigateUrl),
       stabilityRestartEnabled: userOrg.org.stabilityRestartEnabled,
       stabilityRestartMemoryGiB: userOrg.org.stabilityRestartMemoryGiB,
       stabilityRestartCooldownMinutes: userOrg.org.stabilityRestartCooldownMinutes,
@@ -271,7 +270,6 @@ export class OrgsService {
       name: m.org.name,
       slug: m.org.slug,
       discordWebhookConfigured: Boolean(m.org.discordWebhookUrl),
-      frigateConfigured: Boolean(m.org.frigateUrl),
       stabilityRestartEnabled: m.org.stabilityRestartEnabled,
       stabilityRestartMemoryGiB: m.org.stabilityRestartMemoryGiB,
       stabilityRestartCooldownMinutes: m.org.stabilityRestartCooldownMinutes,
@@ -288,7 +286,7 @@ export class OrgsService {
   async updateOrg(
     orgId: string,
     userId: string,
-    updates: { discordWebhookUrl?: string; frigateUrl?: string; frigateApiKey?: string; frigateWebhookSecret?: string; stabilityRestartEnabled?: boolean; stabilityRestartMemoryGiB?: number; stabilityRestartCooldownMinutes?: number },
+    updates: { discordWebhookUrl?: string; stabilityRestartEnabled?: boolean; stabilityRestartMemoryGiB?: number; stabilityRestartCooldownMinutes?: number },
   ): Promise<{ ok: true; stabilityRestartEnabled: boolean; stabilityRestartMemoryGiB: number; stabilityRestartCooldownMinutes: number }> {
     const userOrg = await this.prisma.userOrg.findUnique({
       where: { userId_orgId: { userId, orgId } },
@@ -301,45 +299,12 @@ export class OrgsService {
 
     const data: Record<string, string | null | boolean | number> = {};
     if (updates.discordWebhookUrl !== undefined) data.discordWebhookUrl = updates.discordWebhookUrl || null;
-    if (updates.frigateUrl !== undefined) data.frigateUrl = updates.frigateUrl || null;
-    if (updates.frigateApiKey !== undefined) data.frigateApiKey = updates.frigateApiKey || null;
-    if (updates.frigateWebhookSecret !== undefined) data.frigateWebhookSecret = updates.frigateWebhookSecret || null;
     if (updates.stabilityRestartEnabled !== undefined) data.stabilityRestartEnabled = updates.stabilityRestartEnabled;
     if (updates.stabilityRestartMemoryGiB !== undefined) data.stabilityRestartMemoryGiB = updates.stabilityRestartMemoryGiB;
     if (updates.stabilityRestartCooldownMinutes !== undefined) data.stabilityRestartCooldownMinutes = updates.stabilityRestartCooldownMinutes;
 
     const org = await this.prisma.org.update({ where: { id: orgId }, data });
     return { ok: true, stabilityRestartEnabled: org.stabilityRestartEnabled, stabilityRestartMemoryGiB: org.stabilityRestartMemoryGiB, stabilityRestartCooldownMinutes: org.stabilityRestartCooldownMinutes };
-  }
-
-  async testFrigateConnection(
-    orgId: string,
-    userId: string,
-  ): Promise<{ ok: boolean; version?: string; error?: string }> {
-    const userOrg = await this.prisma.userOrg.findUnique({
-      where: { userId_orgId: { userId, orgId } },
-      include: { org: { select: { frigateUrl: true, frigateApiKey: true } } },
-    });
-    if (!userOrg) throw new ForbiddenException('Not a member of this org');
-
-    const frigateUrl = userOrg.org.frigateUrl?.trim();
-    if (!frigateUrl) {
-      return { ok: false, error: 'No Frigate URL configured for this org' };
-    }
-
-    try {
-      const headers: Record<string, string> = { Accept: 'application/json' };
-      if (userOrg.org.frigateApiKey) headers.Authorization = `Bearer ${userOrg.org.frigateApiKey}`;
-
-      const res = await fetch(`${frigateUrl}/api/version`, { headers, signal: AbortSignal.timeout(5000) });
-      if (!res.ok) {
-        return { ok: false, error: `Frigate returned HTTP ${res.status}` };
-      }
-      const body = await res.json().catch(() => ({})) as Record<string, unknown>;
-      return { ok: true, version: String(body.version ?? body.Version ?? 'unknown') };
-    } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : String(e) };
-    }
   }
 
   async saveOpenAiSettings(orgId:string,userId:string,input:{apiKey?:string;model:string}){

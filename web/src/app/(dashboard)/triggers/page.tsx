@@ -85,7 +85,7 @@ function actionSummary(trigger: TriggerRecord) {
   if (trigger.actionType === 'grant_items') {
     const items = trigger.actionConfig?.items || [];
     return items.length
-      ? `Grant ${items.map((item) => `${item.quantity}× ${item.name}${item.quality ? ` Q${item.quality}` : ''}`).join(', ')}`
+      ? `Grant ${items.map((item) => `${item.quantity}× ${item.name}`).join(', ')}`
       : 'Grant items';
   }
   return trigger.actionType;
@@ -184,7 +184,7 @@ export default function TriggersPage() {
         eventType: form.eventType,
         eventConfig: { level: Number(form.level), comparison: form.comparison },
         actionType: form.actionType,
-        actionConfig: { items: form.grants.filter((row) => row.name.trim()), notifyPlayer: form.notifyPlayer, message: form.message },
+        actionConfig: { items: form.grants.filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity, quality: null })), notifyPlayer: form.notifyPlayer, message: form.message },
         applyToExisting: form.applyToExisting,
       });
       setShowCreate(false);

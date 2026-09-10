@@ -48,22 +48,22 @@ if (-not $SkipInfra) {
 Write-Step "Starting control-plane and web"
 $cpLog = Join-Path $Root "cp.log"
 $webLog = Join-Path $Root "web.log"
-# Rotate previous logs so a locked handle from a killed process cannot block startup.
-foreach ($log in @($cpLog, $webLog)) {
+$cpErr = Join-Path $Root "cp.err.log"
+$webErr = Join-Path $Root "web.err.log"
+foreach ($log in @($cpLog, $webLog, $cpErr, $webErr)) {
     if (Test-Path $log) {
         Move-Item $log "$log.prev" -Force -ErrorAction SilentlyContinue
     }
 }
-$cpCmd = "pnpm dev > `"$cpLog`" 2>&1"
-$webCmd = "set NEXT_PUBLIC_CONTROL_PLANE_URL=http://localhost:3001&& pnpm dev > `"$webLog`" 2>&1"
-Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $cpCmd -WorkingDirectory (Join-Path $Root "control-plane") -WindowStyle Hidden
-Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $webCmd -WorkingDirectory (Join-Path $Root "web") -WindowStyle Hidden
+$env:NEXT_PUBLIC_CONTROL_PLANE_URL = "http://localhost:3001"
+Start-Process -FilePath "pnpm.cmd" -ArgumentList "dev" -WorkingDirectory (Join-Path $Root "control-plane") -RedirectStandardOutput $cpLog -RedirectStandardError $cpErr -WindowStyle Hidden
+Start-Process -FilePath "pnpm.cmd" -ArgumentList "dev" -WorkingDirectory (Join-Path $Root "web") -RedirectStandardOutput $webLog -RedirectStandardError $webErr -WindowStyle Hidden
 
 Write-Step "Waiting for API health"
 $apiUp = $false
 for ($i = 0; $i -lt 60; $i++) {
     try {
-        $r = Invoke-WebRequest -Uri "http://127.0.0.1:3001/health" -UseBasicParsing -TimeoutSec 2
+        $r = Invoke-WebRequest -Uri "http://127.0.0.1:3001/api/health" -UseBasicParsing -TimeoutSec 2
         if ($r.StatusCode -eq 200) {
             $apiUp = $true
             break
@@ -74,9 +74,9 @@ for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Seconds 2
 }
 if ($apiUp) {
-    Write-Ok "API http://127.0.0.1:3001/health"
+    Write-Ok "API http://127.0.0.1:3001/api/health"
 } else {
-    Write-Warn "API not healthy yet - check cp.log"
+    Write-Warn "API not healthy yet - check cp.log / cp.err.log"
 }
 
 if ($WithAgent) {

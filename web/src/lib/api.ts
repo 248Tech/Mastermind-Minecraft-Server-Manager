@@ -90,7 +90,7 @@ export const api = {
 export interface AuthResponse { access_token: string; userId: string; orgId: string; }
 export interface User { id: string; email: string; name?: string; }
 export interface OrgAccount { id:string; email:string; name:string|null; role:'admin'|'operator'|'viewer'; createdAt:string; approvedAt:string|null; emailVerifiedAt:string|null; signInEnabled:boolean; steamLinked?:boolean; steamIdLast4?:string|null; }
-export interface Org { id: string; name: string; slug: string; discordWebhookUrl?: string; frigateUrl?: string; frigateApiKey?: string; frigateWebhookSecret?: string; avoidBloodMoonRestart?: boolean; stabilityRestartEnabled?:boolean; stabilityRestartMemoryGiB?:number; stabilityRestartCooldownMinutes?:number; openaiConfigured?:boolean; openaiModel?:string; modAiProvider?:'codex'|'kimi'; kimiConfigured?:boolean; kimiModel?:string; cloudflareConfigured?:boolean; digitalOceanConfigured?:boolean; mailgunConfigured?:boolean; mailgunDomain?:string; mailgunFromEmail?:string; mailgunRegion?:'us'|'eu'; stripeConfigured?:boolean; stripeWebhookConfigured?:boolean; stripeWebhookUrl?:string; maintenancePasswordConfigured?:boolean; }
+export interface Org { id: string; name: string; slug: string; discordWebhookUrl?: string; stabilityRestartEnabled?:boolean; stabilityRestartMemoryGiB?:number; stabilityRestartCooldownMinutes?:number; openaiConfigured?:boolean; openaiModel?:string; modAiProvider?:'codex'|'kimi'; kimiConfigured?:boolean; kimiModel?:string; cloudflareConfigured?:boolean; digitalOceanConfigured?:boolean; mailgunConfigured?:boolean; mailgunDomain?:string; mailgunFromEmail?:string; mailgunRegion?:'us'|'eu'; stripeConfigured?:boolean; stripeWebhookConfigured?:boolean; stripeWebhookUrl?:string; maintenancePasswordConfigured?:boolean; }
 export interface Host { id: string; orgId: string; name: string; status: string | null; lastHeartbeatAt: string | null; lastMetrics: Record<string,unknown> | null; agentVersion: string | null; createdAt: string; serverInstances: { id: string; name: string }[]; }
 export interface ServerInstance { id: string; orgId: string; hostId: string; name: string; gameType: string; capabilities: string[]; installPath: string | null; startCommand: string | null; updateCommand?: string | null; telnetHost: string | null; telnetPort: number | null; maintenanceMode?: boolean; rebootIfDown?: boolean; mapEmbedUrl?: string | null; createdAt: string; }
 export interface Job { id: string; orgId: string; serverInstanceId: string | null; serverName?: string; type: string; payload: unknown; createdAt: string; startedBy?: { id:string; name:string; email:string } | null; latestRun: { id: string; status: string; startedAt: string | null; finishedAt: string | null; result: unknown } | null; }
@@ -105,7 +105,7 @@ export interface TriggerRecord {
   eventType: string;
   eventConfig: { level?: number; comparison?: string };
   actionType: string;
-  actionConfig: { claimCount?: number; notifyPlayer?: boolean; message?: string; items?: { name: string; quantity: number; quality: number | null }[] };
+  actionConfig: { claimCount?: number; notifyPlayer?: boolean; message?: string; items?: { name: string; quantity: number }[] };
   applyToExisting: boolean;
   lastFiredAt: string | null;
   fireCount: number;

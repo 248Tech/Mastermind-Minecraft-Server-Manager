@@ -26,15 +26,6 @@ class UpdateOrgDto {
   @IsString()
   discordWebhookUrl?: string;
   @IsOptional()
-  @IsString()
-  frigateUrl?: string;
-  @IsOptional()
-  @IsString()
-  frigateApiKey?: string;
-  @IsOptional()
-  @IsString()
-  frigateWebhookSecret?: string;
-  @IsOptional()
   @IsBoolean()
   stabilityRestartEnabled?: boolean;
   @IsOptional()
@@ -294,12 +285,5 @@ export class OrgsController {
   @RequireOrgRoles('admin')
   clearMaintenancePassword(@Param('orgId')orgId:string,@Req()req:RequestWithUser){
     return this.orgsService.clearMaintenancePassword(orgId,req.user!.id);
-  }
-
-  @Post(':orgId/detection/frigate/test')
-  @UseGuards(OrgMemberGuard,RequireOrgRoleGuard)
-  @RequireOrgRoles('admin')
-  async testFrigate(@Param('orgId') orgId: string, @Req() req: RequestWithUser) {
-    return this.orgsService.testFrigateConnection(orgId, req.user!.id);
   }
 }

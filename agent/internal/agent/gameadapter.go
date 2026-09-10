@@ -40,7 +40,6 @@ type InstanceConfig struct {
 	TelnetHost     string
 	TelnetPort     int
 	TelnetPassword string
-	AvoidBloodMoonRestart bool
 	// Optional game-specific config (e.g. log subpath, RCON port)
 	Extra map[string]interface{}
 }

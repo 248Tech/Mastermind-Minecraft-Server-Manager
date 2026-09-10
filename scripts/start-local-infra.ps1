@@ -45,7 +45,16 @@ if (-not (Test-NetConnection 127.0.0.1 -Port 6379 -WarningAction SilentlyContinu
 if (-not (Test-NetConnection 127.0.0.1 -Port 6379 -WarningAction SilentlyContinue).TcpTestSucceeded) {
     Write-Fail "Redis failed to bind 127.0.0.1:6379"
 }
-Write-Ok "127.0.0.1:6379"
+$redisVer = & $redisExe --version 2>&1 | Out-String
+if ($redisVer -match 'v=(\d+)\.(\d+)') {
+    $maj = [int]$Matches[1]; $min = [int]$Matches[2]
+    if ($maj -lt 6 -or ($maj -eq 6 -and $min -lt 2)) {
+        Write-Fail "Redis $maj.$min is below 6.2 (BullMQ). Run: .\scripts\install-portable-redis.ps1 -Force"
+    }
+    Write-Ok "127.0.0.1:6379 ($maj.$min)"
+} else {
+    Write-Ok "127.0.0.1:6379"
+}
 
 Write-Step "Postgres"
 if (-not (Test-Path "$pgData\PG_VERSION")) {

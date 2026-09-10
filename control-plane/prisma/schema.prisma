@@ -16,13 +16,8 @@ model Org {
   name               String
   slug               String   @unique
   discordWebhookUrl   String?  @map("discord_webhook_url") // one webhook per org for MVP
-  frigateUrl          String?  @map("frigate_url")            // Frigate NVR base URL (e.g. http://192.168.1.x:5000)
-  frigateApiKey       String?  @map("frigate_api_key")        // optional Frigate API key
-  frigateWebhookSecret String? @map("frigate_webhook_secret") // shared secret validated on incoming Frigate webhooks
   logRetentionDays    Int      @default(7) @map("log_retention_days")
   healthIntervalSec   Int      @default(10) @map("health_interval_sec")
-  // Legacy 7DTD field — unused for Minecraft. Kept for schema compatibility.
-  avoidBloodMoonRestart Boolean @default(false) @map("avoid_blood_moon_restart")
   stabilityRestartEnabled Boolean @default(true) @map("stability_restart_enabled")
   stabilityRestartMemoryGiB Int @default(12) @map("stability_restart_memory_gib")
   stabilityRestartCooldownMinutes Int @default(240) @map("stability_restart_cooldown_minutes")

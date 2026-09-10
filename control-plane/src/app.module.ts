@@ -10,7 +10,6 @@ import { HealthModule } from './health/health.module';
 import { HostsModule } from './hosts/hosts.module';
 import { AuthModule } from './auth/auth.module';
 import { OrgsModule } from './orgs/orgs.module';
-import { FrigateModule } from './frigate/frigate.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { LogsModule } from './logs/logs.module';
 import { HealthMonitorModule } from './health-monitor/health-monitor.module';
@@ -26,7 +25,6 @@ import { TriggersModule } from './triggers/triggers.module';
     HealthModule,
     AuthModule,
     OrgsModule,
-    FrigateModule,
     PairingModule,
     HostsModule,
     ServerInstancesModule,
