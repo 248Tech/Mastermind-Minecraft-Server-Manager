@@ -131,7 +131,7 @@ export function ShopGrantList({
   title = 'In-Game Gifts',
   note = 'Thank-you gifts after your donation — not a purchase of in-game items.',
 }: {
-  item?: Pick<ShopItem, 'grantItems' | 'grantItemName' | 'grantQuantity' | 'grantQuality' | 'chatColor'>;
+  item?: Pick<ShopItem, 'grantItems' | 'grantItemName' | 'grantQuantity'>;
   grants?: ShopGrantItem[];
   compact?: boolean;
   title?: string;

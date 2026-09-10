@@ -42,17 +42,10 @@ export function parseGrantQuality(raw: unknown): number | null | false {
   return value;
 }
 
-export function parseChatColor(raw: unknown): string | null | false {
-  if (raw == null || raw === '') return null;
-  if (typeof raw !== 'string') return false;
-  const match = /^#?([0-9A-Fa-f]{6})$/.exec(raw.trim());
-  return match ? match[1].toUpperCase() : false;
-}
-
 /** Prefer in-game name for RCON give; fall back to bare UUID. */
 export function grantPlayerTarget(playerName: string | null | undefined, uuid?: string | null): string | null {
   const name = String(playerName || '').trim();
-  if (name && /^[A-Za-z0-9_]{1,16}$/.test(name)) return name;
+  if (name && /^[A-Za-z0-9_]{1,16}$/.test(name) && !/^all$/i.test(name)) return name;
   const id = String(uuid || '').trim();
   if (/^[0-9a-fA-F-]{32,36}$/.test(id)) return id;
   return null;
@@ -89,15 +82,6 @@ export function buildGivePlusCommand(
   // Treat input as player name first (Minecraft), else legacy steam digits as name fallback.
   const asName = String(steamIdOrName || '').replace(/^Steam_/i, '').trim();
   return buildGiveCommand(asName, itemName, amount, quality);
-}
-
-export function buildChatColorCommand(
-  _playerName: string | null | undefined,
-  _color: string | null | undefined,
-  _nameOnly = true,
-): string | null {
-  // No vanilla Minecraft equivalent for playerchatcolor; skip silently.
-  return null;
 }
 
 export function parseGrantItemList(raw: unknown): GrantItemSpec[] | false {

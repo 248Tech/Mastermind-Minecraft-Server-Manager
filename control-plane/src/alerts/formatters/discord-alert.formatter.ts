@@ -31,9 +31,8 @@ function buildEmbed(type: AlertType, ctx: AlertContext): DiscordEmbed {
   if (ctx.reason) fields.push({ name: 'Reason', value: String(ctx.reason), inline: false });
   if (ctx.playerName) fields.push({ name: 'Player', value: String(ctx.playerName), inline: true });
   if (ctx.minecraftUuid) fields.push({ name: 'UUID', value: String(ctx.minecraftUuid), inline: false });
-  // Steam/EOS only when Minecraft UUID is absent (legacy optional Steam portal accounts).
+  // Steam only when Minecraft UUID is absent (legacy optional Steam portal accounts).
   if (!ctx.minecraftUuid && ctx.steamId) fields.push({ name: 'Steam ID', value: String(ctx.steamId), inline: false });
-  if (!ctx.minecraftUuid && ctx.eosId) fields.push({ name: 'EOS ID', value: String(ctx.eosId), inline: false });
   if (type === 'PLAYER_DISCONNECTED' && typeof ctx.sessionSeconds === 'number') {
     fields.push({ name: 'Session playtime', value: formatDuration(ctx.sessionSeconds), inline: true });
   }

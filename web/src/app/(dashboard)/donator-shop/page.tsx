@@ -15,9 +15,9 @@ const labelStyle: CSSProperties = { display: 'block', fontSize: '0.78rem', color
 type JobResult = { data?: { items?: string[] }; errorMessage?: string };
 type CatalogResponse = { items?: string[]; jobRunId?: string; cached?: boolean; count?: number };
 
-function grantsFromItem(item: Pick<ShopItem, 'grantItems' | 'grantItemName' | 'grantQuantity' | 'grantQuality'>): GrantDraft[] {
+function grantsFromItem(item: Pick<ShopItem, 'grantItems' | 'grantItemName' | 'grantQuantity'>): GrantDraft[] {
   if (item.grantItems?.length) return item.grantItems.map((row) => ({ name: row.name, quantity: row.quantity || 1, quality: row.quality ?? null }));
-  if (item.grantItemName) return [{ name: item.grantItemName, quantity: item.grantQuantity || 1, quality: item.grantQuality ?? null }];
+  if (item.grantItemName) return [{ name: item.grantItemName, quantity: item.grantQuantity || 1, quality: null }];
   return [];
 }
 
@@ -161,8 +161,6 @@ export default function DonatorShopPage() {
         price: (item.priceCents / 100).toFixed(2),
         active: String(item.active),
         grantItems: JSON.stringify((item.grantItems || grantsFromItem(item)).filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity, quality: null }))),
-        chatColor: '',
-        bonusLandClaims: '0',
       }, editImage), 'PATCH');
       setEditing(null); setEditImage(null);
       setMessage('Shop item updated.');

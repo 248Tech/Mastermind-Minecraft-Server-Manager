@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0] - 2026-09-10
+
+### Removed
+
+- Player `eosId`, `zombieKills`, and `PlayerVehicleHistory` (migration `20260910000004_drop_7dtd_player_shop_residue`).
+- Shop/donation columns `grantQuality`, `chatColor`, `bonusLandClaims`, `chatColorStatus`.
+- Donated land-claims helper and chat-color grant delivery paths.
+
+### Changed
+
+- Player roster sync and identity reconcile are Minecraft/Steam oriented (no EOS counters).
+- Donator shop and purchases APIs no longer expose 7DTD grant-color / land-claim fields.
+
 ## [0.8.0] - 2026-09-10
 
 ### Removed

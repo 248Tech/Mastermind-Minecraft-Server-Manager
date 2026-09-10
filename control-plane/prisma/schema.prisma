@@ -298,14 +298,12 @@ model Player {
   serverInstanceId        String    @map("server_instance_id")
   identityKey             String    @map("identity_key")
   steamId                 String?   @map("steam_id")
-  eosId                   String?   @map("eos_id")
   entityId                Int?      @map("entity_id")
   ipAddress               String?   @map("ip_address")
   name                    String
   online                  Boolean   @default(false)
   currentSessionStartedAt DateTime? @map("current_session_started_at")
   lifetimeSeconds         Int       @default(0) @map("lifetime_seconds")
-  zombieKills             Int       @default(0) @map("zombie_kills")
   playerKills             Int       @default(0) @map("player_kills")
   deaths                  Int       @default(0)
   level                   Int       @default(1)
@@ -327,33 +325,11 @@ model Player {
   sessions       PlayerSession[]
   donations      Donation[]
   triggerFires   TriggerFire[]
-  vehicleHistory PlayerVehicleHistory[]
 
   @@unique([serverInstanceId, identityKey])
   @@index([orgId, lastSeenAt(sort: Desc)])
   @@index([serverInstanceId, online])
   @@index([serverInstanceId, name])
-}
-
-model PlayerVehicleHistory {
-  id             String    @id @default(cuid())
-  playerId       String    @map("player_id")
-  vehicleKey     String    @map("vehicle_key")
-  itemName       String    @map("item_name")
-  displayName    String    @map("display_name")
-  entityId       Int?      @map("entity_id")
-  lastPosX       Float?    @map("last_pos_x")
-  lastPosY       Float?    @map("last_pos_y")
-  lastPosZ       Float?    @map("last_pos_z")
-  lastSeenAt     DateTime  @map("last_seen_at")
-  lastReturnedAt DateTime? @map("last_returned_at")
-  returnCount    Int       @default(0) @map("return_count")
-
-  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
-  @@unique([playerId, vehicleKey])
-  @@index([playerId, lastSeenAt(sort: Desc)])
-  @@map("player_vehicle_history")
 }
 
 model PlayerSession {
@@ -408,10 +384,7 @@ model ShopItem {
   imageMime   String?  @map("image_mime")
   grantItemName String? @map("grant_item_name")
   grantQuantity Int     @default(1) @map("grant_quantity")
-  grantQuality  Int?    @map("grant_quality")
   grantItems    Json    @default("[]") @map("grant_items")
-  chatColor     String? @map("chat_color")
-  bonusLandClaims Int   @default(0) @map("bonus_land_claims")
   active      Boolean  @default(true)
   sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -433,12 +406,8 @@ model DonationLine {
   quantity    Int      @default(1)
   grantItemName String?  @map("grant_item_name")
   grantQuantity Int?     @map("grant_quantity")
-  grantQuality  Int?     @map("grant_quality")
   grantItems    Json     @default("[]") @map("grant_items")
-  chatColor     String?  @map("chat_color")
-  bonusLandClaims Int    @default(0) @map("bonus_land_claims")
   grantStatus   String   @default("none") @map("grant_status")
-  chatColorStatus String @default("none") @map("chat_color_status")
   grantAttempts Int      @default(0) @map("grant_attempts")
   grantQueuedAt DateTime? @map("grant_queued_at")
   grantedAt     DateTime? @map("granted_at")
@@ -450,7 +419,6 @@ model DonationLine {
   @@index([donationId])
   @@index([shopItemId])
   @@index([grantStatus])
-  @@index([chatColorStatus])
 }
 
 model Schedule {

@@ -18,7 +18,6 @@ export interface AlertContext {
   /** Minecraft UUID when known (from logs or uuid: identityKey). */
   minecraftUuid?: string;
   steamId?: string;
-  eosId?: string;
   /** Completed play session length, primarily for disconnect alerts. */
   sessionSeconds?: number;
   /** Arbitrary extras */

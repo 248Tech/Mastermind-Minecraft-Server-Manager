@@ -55,7 +55,7 @@ export class PlayersService implements OnModuleInit, OnModuleDestroy {
       where: { orgId, ...(serverInstanceId ? { serverInstanceId } : {}), NOT: { identityKey: { startsWith: 'name:' } } },
     });
     for (const player of stablePlayers) {
-      await reconcileNameFallback(this.prisma, player.serverInstanceId, player.identityKey, player.name, player.steamId, player.eosId);
+      await reconcileNameFallback(this.prisma, player.serverInstanceId, player.identityKey, player.name, player.steamId);
     }
     const now = Date.now();
     const players = await this.prisma.player.findMany({

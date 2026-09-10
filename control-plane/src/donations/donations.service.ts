@@ -43,7 +43,7 @@ export class DonationsService {
         shopItem: { select: { name: true } },
         lines: {
           orderBy: { itemName: 'asc' },
-          select: { id: true, shopItemId: true, itemName: true, amountCents: true, quantity: true, grantStatus: true, chatColorStatus: true, grantError: true, grantItems: true, grantItemName: true, grantQuantity: true, grantQuality: true },
+          select: { id: true, shopItemId: true, itemName: true, amountCents: true, quantity: true, grantStatus: true, grantError: true, grantItems: true, grantItemName: true, grantQuantity: true },
         },
       },
     });
@@ -59,8 +59,8 @@ export class DonationsService {
       lines: row.lines.length
         ? row.lines
         : row.shopItem
-          ? [{ id: row.id, shopItemId: row.shopItemId, itemName: row.shopItem.name, amountCents: row.amountCents, quantity: 1, grantStatus: 'none', chatColorStatus: 'none', grantError: null }]
-          : [{ id: row.id, shopItemId: null, itemName: 'Custom support', amountCents: row.amountCents, quantity: 1, grantStatus: 'none', chatColorStatus: 'none', grantError: null }],
+          ? [{ id: row.id, shopItemId: row.shopItemId, itemName: row.shopItem.name, amountCents: row.amountCents, quantity: 1, grantStatus: 'none', grantError: null }]
+          : [{ id: row.id, shopItemId: null, itemName: 'Custom support', amountCents: row.amountCents, quantity: 1, grantStatus: 'none', grantError: null }],
     }));
   }
 
@@ -251,7 +251,7 @@ export class DonationsService {
     if (!paid.shopItemIds.length) return [];
     const items = await this.prisma.shopItem.findMany({
       where: { orgId: paid.orgId, id: { in: paid.shopItemIds } },
-      select: { id: true, name: true, priceCents: true, grantItemName: true, grantQuantity: true, grantQuality: true, grantItems: true, chatColor: true, bonusLandClaims: true },
+      select: { id: true, name: true, priceCents: true, grantItemName: true, grantQuantity: true, grantItems: true },
     });
     return paid.shopItemIds.map((id, index) => {
       const item = items.find((row) => row.id === id);
@@ -260,7 +260,7 @@ export class DonationsService {
       const grantItems = snapshotLineGrants(
         parsed !== false && parsed.length
           ? parsed
-          : (parseGrantItemList(item?.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity, quality: item.grantQuality }] : []) || []),
+          : (parseGrantItemList(item?.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity, quality: null }] : []) || []),
       );
       const first = grantItems[0];
       return {
@@ -271,11 +271,7 @@ export class DonationsService {
         grantItems: grantItems.map((g) => ({ ...g, quality: null })) as Prisma.InputJsonValue,
         grantItemName: first?.name ?? null,
         grantQuantity: first ? first.quantity : null,
-        grantQuality: null,
-        chatColor: null,
-        bonusLandClaims: 0,
         grantStatus: aggregateGrantStatus(grantItems),
-        chatColorStatus: 'none',
       };
     }).filter((line) => line.amountCents > 0);
   }

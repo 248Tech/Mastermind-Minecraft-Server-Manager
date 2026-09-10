@@ -3,11 +3,9 @@ export type PlayerRosterRow = {
   name: string;
   identityKey: string;
   steamId: string | null;
-  eosId: string | null;
   ipAddress: string | null;
   ping: number | null;
   level: number | null;
-  zombieKills: number;
   playerKills: number;
   deaths: number;
   position: { x: number; y: number; z: number } | null;
@@ -46,14 +44,8 @@ function steamIdOf(value: string): string | null {
   return match ? match[1] : null;
 }
 
-function eosIdOf(value: string): string | null {
-  const match = /(?:^|EOS_)([a-f0-9]{20,64})$/i.exec(value.trim());
-  return match ? match[1] : null;
-}
-
-export function rosterIdentityKey(steamId: string | null, eosId: string | null, name: string): string {
+export function rosterIdentityKey(steamId: string | null, name: string): string {
   if (steamId) return `steam:${steamId}`;
-  if (eosId) return `eos:${eosId}`;
   return `name:${name.toLowerCase()}`;
 }
 
@@ -79,11 +71,9 @@ export function parseMinecraftRoster(result: unknown): PlayerRosterRow[] | null 
       name,
       identityKey: uuid ? `uuid:${uuid}` : `name:${name.toLowerCase()}`,
       steamId: null,
-      eosId: null,
       ipAddress: null,
       ping: null,
       level: null,
-      zombieKills: 0,
       playerKills: 0,
       deaths: 0,
       position: null,
@@ -149,7 +139,6 @@ export function parseLpRoster(output: string): PlayerRosterRow[] | null {
     const head = line.match(/^\s*\d+\.\s+id=(\d+),\s*([^,]+),/i);
     if (!head) continue;
     const steam = line.match(/(?:pltfmid|steamid)=Steam_([0-9]{15,20})/i)?.[1] ?? null;
-    const eos = line.match(/(?:crossid|pltfmid)=EOS_([a-f0-9]{20,64})/i)?.[1] ?? null;
     const name = head[2].trim();
     if (!name) continue;
     const ping = int(line.match(/\bping\s*=\s*(\d+)/i)?.[1]);
@@ -157,11 +146,9 @@ export function parseLpRoster(output: string): PlayerRosterRow[] | null {
       entityId: Number(head[1]),
       name,
       steamId: steam,
-      eosId: eos,
-      identityKey: rosterIdentityKey(steam, eos, name),
+      identityKey: rosterIdentityKey(steam, name),
       ipAddress: cleanRosterIp(line.match(/\bip\s*=\s*(\[[^\]]+\]|[^,\s]+)/i)?.[1]),
       ping: Number.isInteger(ping) ? ping : null,
-      zombieKills: Number(line.match(/(?:zombies|zombiekills)\s*=\s*(\d+)/i)?.[1] ?? 0),
       playerKills: Number(line.match(/(?:players|playerkills)\s*=\s*(\d+)/i)?.[1] ?? 0),
       deaths: Number(line.match(/deaths\s*=\s*(\d+)/i)?.[1] ?? 0),
       level: Number(line.match(/level\s*=\s*(\d+)/i)?.[1] ?? 1),
@@ -219,9 +206,7 @@ export function parseAllocsPlayersOnline(json: unknown): PlayerRosterRow[] | nul
       continue;
     }
     const steam = steamIdOf(text(item.steamid, item.steamId, item.PlatformId, item.platformId, item.pltfmid));
-    const eos = eosIdOf(text(item.crossplatformid, item.crossPlatformId, item.eossid, item.eosId, item.userid, item.crossid));
     const ping = int(item.ping, item.Ping);
-    const zombieKills = int(item.zombiekills, item.zombieKills, item.zombies);
     const playerKills = int(item.playerkills, item.playerKills, item.players);
     const deaths = int(item.playerdeaths, item.playerDeaths, item.deaths);
     const level = int(item.level, item.Level);
@@ -229,11 +214,9 @@ export function parseAllocsPlayersOnline(json: unknown): PlayerRosterRow[] | nul
       entityId,
       name,
       steamId: steam,
-      eosId: eos,
-      identityKey: rosterIdentityKey(steam, eos, name),
+      identityKey: rosterIdentityKey(steam, name),
       ipAddress: cleanRosterIp(text(item.ip, item.ipAddress, item.IP)),
       ping: Number.isInteger(ping) ? ping : null,
-      zombieKills: Number.isInteger(zombieKills) ? zombieKills : 0,
       playerKills: Number.isInteger(playerKills) ? playerKills : 0,
       deaths: Number.isInteger(deaths) ? deaths : 0,
       level: Number.isInteger(level) ? Math.max(1, level) : null,

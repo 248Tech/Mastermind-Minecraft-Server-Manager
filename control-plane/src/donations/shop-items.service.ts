@@ -31,10 +31,7 @@ export type ShopItemView = {
   createdAt: string;
   grantItemName: string | null;
   grantQuantity: number;
-  grantQuality: number | null;
   grantItems: GrantItemSpec[];
-  chatColor: string | null;
-  bonusLandClaims: number;
 };
 
 @Injectable()
@@ -113,7 +110,7 @@ export class ShopItemsService {
   async create(
     orgId: string,
     userId: string,
-    input: { name?: unknown; description?: unknown; price?: unknown; active?: unknown; grantItemName?: unknown; grantQuantity?: unknown; grantQuality?: unknown; grantItems?: unknown; chatColor?: unknown; bonusLandClaims?: unknown },
+    input: { name?: unknown; description?: unknown; price?: unknown; active?: unknown; grantItemName?: unknown; grantQuantity?: unknown; grantItems?: unknown },
     file?: { buffer?: Buffer },
   ) {
     const count = await this.prisma.shopItem.count({ where: { orgId } });
@@ -146,7 +143,7 @@ export class ShopItemsService {
     orgId: string,
     userId: string,
     itemId: string,
-    input: { name?: unknown; description?: unknown; price?: unknown; active?: unknown; grantItemName?: unknown; grantQuantity?: unknown; grantQuality?: unknown; grantItems?: unknown; chatColor?: unknown; bonusLandClaims?: unknown },
+    input: { name?: unknown; description?: unknown; price?: unknown; active?: unknown; grantItemName?: unknown; grantQuantity?: unknown; grantItems?: unknown },
     file?: { buffer?: Buffer },
   ) {
     const existing = await this.prisma.shopItem.findFirst({ where: { id: itemId, orgId } });
@@ -286,22 +283,22 @@ async function requireProcessedImage(file?: { buffer?: Buffer }) {
 }
 
 function parseShopGrantFields(
-  input: { grantItemName?: unknown; grantQuantity?: unknown; grantQuality?: unknown; grantItems?: unknown; chatColor?: unknown; bonusLandClaims?: unknown },
-  existing?: { grantItemName: string | null; grantQuantity: number; grantQuality: number | null; grantItems?: unknown; chatColor: string | null; bonusLandClaims?: number },
+  input: { grantItemName?: unknown; grantQuantity?: unknown; grantItems?: unknown },
+  existing?: { grantItemName: string | null; grantQuantity: number; grantItems?: unknown },
 ) {
   let grantItems: GrantItemSpec[] | false = false;
   if (input.grantItems != null && input.grantItems !== '') {
     grantItems = parseGrantItemList(input.grantItems);
   } else if (input.grantItemName != null) {
     grantItems = parseGrantItemList(String(input.grantItemName).trim()
-      ? [{ name: input.grantItemName, quantity: input.grantQuantity, quality: input.grantQuality }]
+      ? [{ name: input.grantItemName, quantity: input.grantQuantity, quality: null }]
       : []);
   } else {
     grantItems = parseGrantItemList(existing?.grantItems) === false
-      ? parseGrantItemList(existing?.grantItemName ? [{ name: existing.grantItemName, quantity: existing.grantQuantity, quality: existing.grantQuality }] : [])
+      ? parseGrantItemList(existing?.grantItemName ? [{ name: existing.grantItemName, quantity: existing.grantQuantity, quality: null }] : [])
       : parseGrantItemList(existing?.grantItems);
     if ((grantItems === false || grantItems.length === 0) && existing?.grantItemName) {
-      grantItems = parseGrantItemList([{ name: existing.grantItemName, quantity: existing.grantQuantity, quality: existing.grantQuality }]);
+      grantItems = parseGrantItemList([{ name: existing.grantItemName, quantity: existing.grantQuantity, quality: null }]);
     }
   }
   if (grantItems === false) throw new ConflictException('Each grant must be a Minecraft item id (e.g. diamond or minecraft:diamond), quantity 1–9999. Maximum 8 items.');
@@ -312,9 +309,6 @@ function parseShopGrantFields(
     grantItems: cleaned as Prisma.InputJsonValue,
     grantItemName: first?.name ?? null,
     grantQuantity: first?.quantity ?? 1,
-    grantQuality: null,
-    chatColor: null,
-    bonusLandClaims: 0,
   };
 }
 
@@ -329,10 +323,7 @@ function toView(item: {
   createdAt: Date;
   grantItemName?: string | null;
   grantQuantity?: number;
-  grantQuality?: number | null;
   grantItems?: unknown;
-  chatColor?: string | null;
-  bonusLandClaims?: number;
 }): ShopItemView {
   const grantItems = viewGrantItems(item);
   const first = grantItems[0];
@@ -347,16 +338,13 @@ function toView(item: {
     createdAt: item.createdAt.toISOString(),
     grantItemName: first?.name ?? null,
     grantQuantity: first?.quantity ?? 1,
-    grantQuality: first?.quality ?? null,
     grantItems,
-    chatColor: item.chatColor ?? null,
-    bonusLandClaims: item.bonusLandClaims ?? 0,
   };
 }
 
-function viewGrantItems(item: { grantItems?: unknown; grantItemName?: string | null; grantQuantity?: number; grantQuality?: number | null }): GrantItemSpec[] {
+function viewGrantItems(item: { grantItems?: unknown; grantItemName?: string | null; grantQuantity?: number }): GrantItemSpec[] {
   const parsed = parseGrantItemList(item.grantItems);
   if (parsed !== false && parsed.length) return parsed;
-  const fallback = parseGrantItemList(item.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity, quality: item.grantQuality }] : []);
+  const fallback = parseGrantItemList(item.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity, quality: null }] : []);
   return fallback === false ? [] : fallback;
 }

@@ -255,9 +255,9 @@ export class PlayerAuthService {
         ...(sessionAuth === 'steam' ? { steamId: payload.steamId } : {}),
       },
       select: {
-        id: true, orgId: true, steamId: true, eosId: true, entityId: true, name: true, online: true, serverInstanceId: true,
+        id: true, orgId: true, steamId: true, entityId: true, name: true, online: true, serverInstanceId: true,
         identityKey: true,
-        zombieKills: true, playerKills: true, deaths: true, level: true, lifetimeSeconds: true,
+        playerKills: true, deaths: true, level: true, lifetimeSeconds: true,
         currentSessionStartedAt: true, firstSeenAt: true, lastSeenAt: true, lastLogoutAt: true,
         lastPosX: true, lastPosY: true, lastPosZ: true, lastInventory: true, lastInventoryAt: true,
         supporter: true, supporterSince: true, totalDonatedCents: true, portalPasswordHash: true,
@@ -335,7 +335,6 @@ export class PlayerAuthService {
       mapEmbedUrl: player.serverInstance.mapEmbedUrl ?? null,
       stats: {
         level: player.level,
-        zombieKills: player.zombieKills,
         playerKills: player.playerKills,
         deaths: player.deaths,
         sessionSeconds,

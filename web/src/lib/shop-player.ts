@@ -12,9 +12,7 @@ export type ShopItem = {
   active?: boolean;
   grantItemName?: string | null;
   grantQuantity?: number;
-  grantQuality?: number | null;
   grantItems?: ShopGrantItem[];
-  chatColor?: string | null;
 };
 export type ShopProfile = {
   name: string;
@@ -70,7 +68,7 @@ export function shopItemIconUrl(itemName: string) {
   return `/item-icon/${encodeURIComponent(itemName)}`;
 }
 
-export function shopGrantItems(item: Pick<ShopItem, 'grantItems' | 'grantItemName' | 'grantQuantity' | 'grantQuality'>): ShopGrantItem[] {
+export function shopGrantItems(item: Pick<ShopItem, 'grantItems' | 'grantItemName' | 'grantQuantity'>): ShopGrantItem[] {
   if (Array.isArray(item.grantItems) && item.grantItems.length) {
     return item.grantItems
       .filter((row) => typeof row?.name === 'string' && row.name.trim())
@@ -84,7 +82,7 @@ export function shopGrantItems(item: Pick<ShopItem, 'grantItems' | 'grantItemNam
     return [{
       name: item.grantItemName.trim(),
       quantity: Number.isInteger(item.grantQuantity) && (item.grantQuantity as number) > 0 ? (item.grantQuantity as number) : 1,
-      quality: item.grantQuality ?? null,
+      quality: null,
     }];
   }
   return [];

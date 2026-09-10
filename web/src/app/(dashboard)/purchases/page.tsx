@@ -14,7 +14,7 @@ function when(iso: string | null) {
   return new Date(iso).toLocaleString();
 }
 
-type DonationLine = { id: string; shopItemId: string | null; itemName: string; amountCents: number; quantity: number; grantStatus?: string; chatColorStatus?: string; grantError?: string | null; grantItems?: { name: string; quantity: number; quality?: number | null; status?: string }[] };
+type DonationLine = { id: string; shopItemId: string | null; itemName: string; amountCents: number; quantity: number; grantStatus?: string; grantError?: string | null; grantItems?: { name: string; quantity: number; quality?: number | null; status?: string }[] };
 type DonationRecord = {
   id: string;
   playerName: string;
@@ -73,7 +73,6 @@ export default function PurchasesPage() {
                 {line.grantItems?.length
                   ? ` · In-Game Gifts: ${line.grantItems.map((grant) => `${grant.quantity}× ${grant.name}${grant.status ? ` (${grant.status})` : ''}`).join(', ')}`
                   : (line.grantStatus && line.grantStatus !== 'none' ? ` · gift ${line.grantStatus}` : '')}
-                {line.chatColorStatus && line.chatColorStatus !== 'none' ? ` · color ${line.chatColorStatus}` : ''}
                 {line.grantError ? ` (${line.grantError})` : ''}
               </li>
             ))}

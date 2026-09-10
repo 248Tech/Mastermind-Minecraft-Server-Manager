@@ -107,7 +107,7 @@ export class AlertsService {
 
   async sendMatchingRules(type: AlertType, context: AlertContext): Promise<void> {
     if (type === 'PLAYER_CONNECTED' || type === 'PLAYER_DISCONNECTED') {
-      const player = context.playerName?.trim().toLocaleLowerCase() || context.steamId || context.eosId;
+      const player = context.playerName?.trim().toLocaleLowerCase() || context.steamId;
       if (player) {
         const now = Date.now();
         const key = `${context.orgId}:${context.serverInstanceId}:${type}:${player}`;

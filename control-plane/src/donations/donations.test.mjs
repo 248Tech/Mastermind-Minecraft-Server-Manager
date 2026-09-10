@@ -7,7 +7,7 @@ import {
   parsePaidCheckoutSession,
 } from './donations.logic.ts';
 import { parseShopItemId, parseShopItemIds, parseShopName, parseShopPriceDollars, detectShopImage, parseShopImageSize } from './donations.shop.ts';
-import { buildChatColorCommand, buildGivePlusCommand, classifyGrantOutput, parseChatColor, parseGrantItemName } from './shop-grants.ts';
+import { buildGivePlusCommand, classifyGrantOutput, parseGrantItemName } from './shop-grants.ts';
 import { constructStripeEvent, constructStripeEventWithSecrets, generateTestHeaderString, parseStripeSecretKey, parseStripeWebhookSecret } from './donations.stripe.ts';
 
 function assert(condition, message) {
@@ -187,14 +187,11 @@ assert(noneConfigured, 'fails closed with no webhook secrets');
 assert(parseGrantItemName('resourceWood') === 'resourceWood', 'accepts 7DTD item names');
 assert(parseGrantItemName('all') === null, 'rejects giveplus all alias');
 assert(parseGrantItemName('resourceWood; kick 1') === null, 'rejects command injection in item names');
-assert(parseChatColor('#ff00ff') === 'FF00FF', 'normalizes chat color');
-assert(parseChatColor('red') === false, 'rejects named colors');
-assert(buildGivePlusCommand('76561198000000000', 'resourceWood', 12) === 'giveplus Steam_76561198000000000 resourceWood 12', 'builds giveplus');
-assert(buildGivePlusCommand('76561198000000000', 'resourceWood', 12, 4) === 'giveplus Steam_76561198000000000 resourceWood 12 4', 'builds giveplus with quality');
+assert(buildGivePlusCommand('Steve', 'minecraft:oak_log', 12) === 'give Steve minecraft:oak_log 12', 'builds give');
+assert(buildGivePlusCommand('Steve', 'minecraft:oak_log', 12, 4) === 'give Steve minecraft:oak_log 12', 'quality ignored for Minecraft give');
 assert(buildGivePlusCommand('all', 'resourceWood', 1) === null, 'never targets all players');
-assert(buildChatColorCommand('76561198000000000', 'FF00FF') === 'playerchatcolor Steam_76561198000000000 FF00FF 1', 'builds name-only chat color');
 assert(classifyGrantOutput('ERR: Player not found.', 'failed') === 'retry', 'offline giveplus retries');
-assert(classifyGrantOutput('ERR: Item not found.', 'success') === 'failed', 'unknown items fail closed');
+assert(classifyGrantOutput('There is no such item', 'success') === 'failed', 'unknown items fail closed');
 assert(classifyGrantOutput('Gave item', 'success') === 'delivered', 'successful giveplus delivers');
 
 console.log('donation ledger and Stripe signature tests passed');

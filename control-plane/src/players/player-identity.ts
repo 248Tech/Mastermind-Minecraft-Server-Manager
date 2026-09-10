@@ -1,7 +1,7 @@
 import { PrismaService } from '../prisma.service';
 
 /**
- * Reconcile an early name-only record once Steam/EOS supplies a stable ID.
+ * Reconcile an early name-only record once a stable ID (UUID/Steam) is known.
  * Ambiguous display names are deliberately left untouched.
  */
 export async function reconcileNameFallback(
@@ -10,7 +10,6 @@ export async function reconcileNameFallback(
   identityKey: string,
   name: string,
   steamId: string | null,
-  eosId: string | null,
 ) {
   if (identityKey.startsWith('name:')) return;
   const fallbackKey = `name:${name.toLowerCase()}`;
@@ -28,7 +27,7 @@ export async function reconcileNameFallback(
   if (!canonical) {
     await prisma.player.update({
       where: { id: fallback.id },
-      data: { identityKey, steamId, eosId },
+      data: { identityKey, steamId },
     });
     return;
   }
@@ -41,9 +40,7 @@ export async function reconcileNameFallback(
       where: { id: canonical.id },
       data: {
         steamId: steamId ?? canonical.steamId,
-        eosId: eosId ?? canonical.eosId,
         lifetimeSeconds: { increment: fallback.lifetimeSeconds },
-        zombieKills: Math.max(canonical.zombieKills, fallback.zombieKills),
         playerKills: Math.max(canonical.playerKills, fallback.playerKills),
         deaths: Math.max(canonical.deaths, fallback.deaths),
         level: Math.max(canonical.level, fallback.level),

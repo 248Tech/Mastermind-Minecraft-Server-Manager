@@ -50,7 +50,7 @@ export class TriggersService {
     const trigger = await this.requireTrigger(orgId, triggerId);
     return this.prisma.triggerFire.findMany({
       where: { triggerId: trigger.id },
-      include: { player: { select: { id: true, name: true, steamId: true, eosId: true, level: true } } },
+      include: { player: { select: { id: true, name: true, steamId: true, level: true } } },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
@@ -99,7 +99,7 @@ export class TriggersService {
   async evaluateLevel(
     orgId: string,
     serverInstanceId: string,
-    player: { id: string; name: string; steamId: string | null; eosId: string | null; entityId: number | null; level: number },
+    player: { id: string; name: string; steamId: string | null; entityId: number | null; level: number },
     previousLevel: number,
     newLevel: number,
   ) {
@@ -127,7 +127,7 @@ export class TriggersService {
     const event = parsePlayerLevelConfig(trigger.eventConfig);
     const players = await this.prisma.player.findMany({
       where: { serverInstanceId: trigger.serverInstanceId, level: { gte: event.level } },
-      select: { id: true, name: true, steamId: true, eosId: true, entityId: true, level: true },
+      select: { id: true, name: true, steamId: true, entityId: true, level: true },
     });
     for (const player of players) {
       await this.fireTrigger(trigger, player, event.level).catch(() => undefined);
@@ -149,7 +149,7 @@ export class TriggersService {
         trigger: { orgId, serverInstanceId, enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
         player: { online: true, steamId: { not: null } },
       },
-      include: { trigger: true, player: { select: { id: true, name: true, steamId: true, eosId: true, entityId: true, level: true } } },
+      include: { trigger: true, player: { select: { id: true, name: true, steamId: true, entityId: true, level: true } } },
       take: 32,
     });
     for (const fire of fires) {
@@ -165,7 +165,7 @@ export class TriggersService {
         status: 'pending',
         trigger: { enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
       },
-      include: { trigger: true, player: { select: { id: true, name: true, steamId: true, eosId: true, entityId: true, level: true } } },
+      include: { trigger: true, player: { select: { id: true, name: true, steamId: true, entityId: true, level: true } } },
       take: 16,
     });
     for (const fire of fires) {
@@ -176,7 +176,7 @@ export class TriggersService {
 
   private async fireTrigger(
     trigger: { id: string; actionType: string },
-    player: { id: string; name: string; steamId: string | null; eosId: string | null; entityId: number | null; level: number },
+    player: { id: string; name: string; steamId: string | null; entityId: number | null; level: number },
     level: number,
   ) {
     if (trigger.actionType === TRIGGER_ACTION_GRANT_ITEMS) {
@@ -186,7 +186,7 @@ export class TriggersService {
 
   private async fireGrantItems(
     triggerId: string,
-    player: { id: string; name: string; steamId: string | null; eosId: string | null; entityId: number | null; level: number },
+    player: { id: string; name: string; steamId: string | null; entityId: number | null; level: number },
     level: number,
   ) {
     const trigger = await this.prisma.trigger.findUnique({ where: { id: triggerId } });
@@ -196,7 +196,7 @@ export class TriggersService {
 
   private async enqueueGrantItems(
     trigger: { id: string; orgId: string; serverInstanceId: string; createdById: string | null; actionConfig: unknown },
-    player: { id: string; name: string; steamId: string | null; eosId: string | null; entityId: number | null; level: number },
+    player: { id: string; name: string; steamId: string | null; entityId: number | null; level: number },
     level: number,
     recordFire: boolean,
   ) {
@@ -228,7 +228,6 @@ export class TriggersService {
       triggerFireId: fireId,
       playerId: player.id,
       steamId: player.steamId,
-      eosId: player.eosId,
       entityId: player.entityId,
       name: player.name,
       items: action.items,

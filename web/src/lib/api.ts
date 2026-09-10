@@ -118,7 +118,7 @@ export interface TriggerFireRecord {
   status: string;
   jobId: string | null;
   createdAt: string;
-  player: { id: string; name: string; steamId: string | null; eosId: string | null; level: number };
+  player: { id: string; name: string; steamId: string | null; level: number };
 }
 export interface PairingToken { id: string; token: string; expiresAt: string; expiresInSec: number; }
 export interface ServerLog { id: string; serverInstanceId: string; content: string; createdAt: string; }
@@ -128,12 +128,12 @@ export interface HealthSample { id: string; hostId: string; cpuPercent: number; 
 export interface HealthHost { id: string; name: string; status: string; lastHeartbeatAt: string|null; lastMetrics: { cpu?:number; ramUsedMb?:number; ramTotalMb?:number; diskUsedGb?:number; latencyMs?:number; gameReachable?:boolean }|null; }
 export interface HealthDashboard { hosts: HealthHost[]; samples: HealthSample[]; intervalSec: number; }
 export interface ChatMessage { id:string; sourceId:string; createdAt:string; payload:{playerId:string;entityId:string;playerName:string;channel:string;message:string;serverInstanceName:string}; }
-export interface PlayerRecord { id:string; serverInstanceId:string; identityKey:string; steamId:string|null; eosId:string|null; entityId:number|null; ipAddress:string|null; name:string; online:boolean; currentSessionStartedAt:string|null; sessionSeconds:number; lifetimeSeconds:number; zombieKills:number; playerKills:number; deaths:number; level:number; lastPosX:number|null; lastPosY:number|null; lastPosZ:number|null; lastLogoutAt:string|null; firstSeenAt:string; lastSeenAt:string; }
+export interface PlayerRecord { id:string; serverInstanceId:string; identityKey:string; steamId:string|null; entityId:number|null; ipAddress:string|null; name:string; online:boolean; currentSessionStartedAt:string|null; sessionSeconds:number; lifetimeSeconds:number; playerKills:number; deaths:number; level:number; lastPosX:number|null; lastPosY:number|null; lastPosZ:number|null; lastLogoutAt:string|null; firstSeenAt:string; lastSeenAt:string; }
 export interface ServerAdminRecord { platform?:string; userId:string; name?:string; permissionLevel:number; }
 export interface ModRecord { folder:string; name:string; author?:string; website?:string; version?:string; activatedAt:string; pendingRestart?:boolean; configFiles?:string[]; recommendedBy?:string; recommendedAt?:string; originalName?:string; description?:string; overrideActive?:boolean; transferConfig?:boolean; conflictsWithActive?:boolean; restoreTarget?:string; }
 export interface MergeFileResult { path:string; mergedContent:string; templateContent?:string; stats:{carried:number;newKeys:number;dropped:number}; parseFormat:string; warning?:string; skipped?:boolean; }
 export interface SaveRecord { id:string; createdAt:string; gameDay:number; kind:'full-world'|'region-healer'; sizeBytes:number; }
-export interface ShopItem { id:string; name:string; description:string; priceCents:number; active:boolean; hasImage:boolean; sortOrder:number; createdAt:string; grantItemName?:string|null; grantQuantity?:number; grantQuality?:number|null; grantItems?:{name:string;quantity:number;quality:number|null}[]; chatColor?:string|null; bonusLandClaims?:number; }
+export interface ShopItem { id:string; name:string; description:string; priceCents:number; active:boolean; hasImage:boolean; sortOrder:number; createdAt:string; grantItemName?:string|null; grantQuantity?:number; grantItems?:{name:string;quantity:number;quality:number|null}[]; }
 export interface TriggerCatalog { events:{type:string;label:string}[]; actions:{type:string;label:string}[]; }
-export interface DonationLine { id:string; shopItemId:string|null; itemName:string; amountCents:number; quantity:number; grantStatus?:string; chatColorStatus?:string; grantError?:string|null; grantItems?:{name:string;quantity:number;quality:number|null;status?:string}[]; }
+export interface DonationLine { id:string; shopItemId:string|null; itemName:string; amountCents:number; quantity:number; grantStatus?:string; grantError?:string|null; grantItems?:{name:string;quantity:number;quality:number|null;status?:string}[]; }
 export interface DonationRecord { id:string; playerName:string; steamId:string; amountCents:number; refundedCents:number; status:string; completedAt:string|null; createdAt:string; lines:DonationLine[]; }

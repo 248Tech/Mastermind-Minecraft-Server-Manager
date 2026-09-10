@@ -512,7 +512,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     const seen = new Set<string>();
     for (const row of rows) {
       seen.add(row.identityKey);
-      await reconcileNameFallback(this.prisma, serverInstanceId, row.identityKey, row.name, row.steamId, row.eosId);
+      await reconcileNameFallback(this.prisma, serverInstanceId, row.identityKey, row.name, row.steamId);
       const existing = await this.prisma.player.findUnique({ where: { serverInstanceId_identityKey: { serverInstanceId, identityKey: row.identityKey } } });
       const player = await this.prisma.player.upsert({
         where: { serverInstanceId_identityKey: { serverInstanceId, identityKey: row.identityKey } },
@@ -521,7 +521,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           serverInstanceId,
           identityKey: row.identityKey,
           steamId: row.steamId,
-          eosId: row.eosId,
           entityId: row.entityId > 0 ? row.entityId : null,
           ipAddress: row.ipAddress,
           name: row.name,
@@ -534,14 +533,12 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         },
         update: {
           steamId: row.steamId ?? existing?.steamId,
-          eosId: row.eosId ?? existing?.eosId,
           ...(row.entityId > 0 ? { entityId: row.entityId } : {}),
           ...(row.ipAddress ? { ipAddress: row.ipAddress } : {}),
           name: row.name,
           online: true,
           lastSeenAt: now,
           ...(row.level != null ? { level: row.level } : {}),
-          ...(row.zombieKills > 0 ? { zombieKills: row.zombieKills } : {}),
           ...(row.playerKills > 0 ? { playerKills: row.playerKills } : {}),
           ...(row.deaths > 0 || existing?.deaths == null
             ? { deaths: this.rosterDeaths(serverInstanceId, row.identityKey, existing?.id, row.deaths) }
@@ -558,7 +555,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           id: player.id,
           name: player.name,
           steamId: player.steamId,
-          eosId: player.eosId,
           entityId: player.entityId,
           level: newLevel,
         }, previousLevel, newLevel).catch(() => undefined);
@@ -650,10 +646,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     const lines = await this.prisma.donationLine.findMany({
       where: {
         donation: { playerId, orgId, serverInstanceId, status: 'completed' },
-        OR: [
-          { grantStatus: { in: ['pending', 'queued'] } },
-          { chatColorStatus: { in: ['pending', 'queued'] } },
-        ],
+        grantStatus: { in: ['pending', 'queued'] },
       },
       take: 16,
     });
@@ -662,14 +655,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     for (const line of lines) {
       if (queued >= limit) break;
       const stale = !line.grantQueuedAt || line.grantQueuedAt < staleBefore;
-      // Chat color has no vanilla Minecraft equivalent — clear pending rows.
-      const colorDue = line.chatColorStatus === 'pending' || line.chatColorStatus === 'queued';
-      if (colorDue) {
-        await this.prisma.donationLine.update({
-          where: { id: line.id },
-          data: { chatColorStatus: 'delivered', chatColor: null },
-        });
-      }
       if (!online) continue;
       const grants = lineGrantItems(line.grantItems, line);
       for (let index = 0; index < grants.length; index += 1) {
@@ -687,7 +672,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
         grants[index] = { ...grant, status: 'queued', attempts: grant.attempts + 1, error: null };
-        if (await this.queueShopGrantJob(orgId, member.userId, serverInstanceId, line.id, 'item', command, {
+        if (await this.queueShopGrantJob(orgId, member.userId, serverInstanceId, line.id, command, {
           grantStatus: aggregateGrantStatus(grants),
           grantItems: grants as Prisma.InputJsonValue,
         }, index)) {
@@ -704,9 +689,8 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     userId: string,
     serverInstanceId: string,
     donationLineId: string,
-    grantKind: 'item' | 'chat_color',
     command: string,
-    status: { grantStatus?: string; chatColorStatus?: string; grantItems?: Prisma.InputJsonValue },
+    status: { grantStatus?: string; grantItems?: Prisma.InputJsonValue },
     grantItemIndex?: number,
   ) {
     try {
@@ -716,21 +700,20 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           ...status,
           grantQueuedAt: new Date(),
           grantError: null,
-          ...(grantKind === 'chat_color' ? { grantAttempts: { increment: 1 } } : {}),
         },
       });
       await this.createJob(orgId, userId, serverInstanceId, 'RCON', {
         command,
         purpose: 'shop_grant',
         donationLineId,
-        grantKind,
+        grantKind: 'item',
         grantItemIndex,
       });
       return true;
     } catch {
       await this.prisma.donationLine.update({
         where: { id: donationLineId },
-        data: grantKind === 'item' ? { grantStatus: 'pending' } : { chatColorStatus: 'pending' },
+        data: { grantStatus: 'pending' },
       }).catch(() => undefined);
       return false;
     }
@@ -743,10 +726,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     const next = outcome === 'delivered' ? 'delivered' : outcome === 'failed' ? 'failed' : 'pending';
     const error = next === 'delivered' ? null : String(output || 'Grant command failed').slice(0, 180);
     if (payload.grantKind === 'chat_color') {
-      await this.prisma.donationLine.updateMany({
-        where: { id: lineId },
-        data: { chatColorStatus: next, grantError: error, grantedAt: next === 'delivered' ? new Date() : undefined },
-      });
+      // Legacy rows may still complete; ignore after column drop.
       return;
     }
     const line = await this.prisma.donationLine.findUnique({ where: { id: lineId } });
@@ -778,7 +758,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     const member=await this.prisma.userOrg.findFirst({where:{orgId},orderBy:{createdAt:'asc'},select:{userId:true}});
     if(!member)return;
     for(const row of rows){
-      const identifier=row.steamId||row.eosId||String(row.entityId);const key=`${serverInstanceId}:${identifier}`;
+      const identifier=row.steamId||row.name||String(row.entityId);const key=`${serverInstanceId}:${identifier}`;
       if((this.protectionCooldown.get(key)||0)>Date.now())continue;
       if(settings.highPingEnabled&&row.ping!=null){
         const count=row.ping>settings.highPingThresholdMs?(this.badPingSamples.get(key)||0)+1:0;this.badPingSamples.set(key,count);

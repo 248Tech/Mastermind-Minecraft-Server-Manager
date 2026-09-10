@@ -197,7 +197,7 @@ export class LogsService {
         const name = uuidLine[1];
         const uuid = uuidLine[2].toLowerCase();
         const identityKey = `uuid:${uuid}`;
-        await reconcileNameFallback(this.prisma, serverInstanceId, identityKey, name, null, null);
+        await reconcileNameFallback(this.prisma, serverInstanceId, identityKey, name, null);
         await this.prisma.player.upsert({
           where: { serverInstanceId_identityKey: { serverInstanceId, identityKey } },
           create: { orgId, serverInstanceId, identityKey, name, online: false, lastSeenAt: new Date() },
@@ -219,12 +219,12 @@ export class LogsService {
           name: { equals: name, mode: 'insensitive' },
           identityKey: { startsWith: 'uuid:' },
         },
-        select: { identityKey: true, steamId: true, eosId: true, online: true, id: true, currentSessionStartedAt: true, lastSeenAt: true },
+        select: { identityKey: true, steamId: true, online: true, id: true, currentSessionStartedAt: true, lastSeenAt: true },
         orderBy: { lastSeenAt: 'desc' },
       });
       const identityKey = namedUuid?.identityKey ?? `name:${name.toLowerCase()}`;
       const minecraftUuid = identityKey.startsWith('uuid:') ? identityKey.slice(5) : undefined;
-      await reconcileNameFallback(this.prisma, serverInstanceId, identityKey, name, null, null);
+      await reconcileNameFallback(this.prisma, serverInstanceId, identityKey, name, null);
       const now = new Date();
       const existing = namedUuid
         ?? await this.prisma.player.findUnique({ where: { serverInstanceId_identityKey: { serverInstanceId, identityKey } } });
