@@ -302,6 +302,30 @@ func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, 
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
 		return agent.JobResult{Status: "success", Result: result}, nil
+	case "MOD_CONFIG_READ":
+		content, path, err := a.ReadModConfig(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"path": path, "content": content}}, nil
+	case "MOD_CONFIG_WRITE":
+		path, err := a.WriteModConfig(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"path": path, "saved": true}}, nil
+	case "MOD_CONFIG_MERGE_PREVIEW":
+		files, err := a.PreviewConfigMerge(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"files": files}}, nil
+	case "MOD_CONFIG_MERGE_APPLY":
+		result, err := a.ApplyConfigMerge(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
 	default:
 		return agent.JobResult{Status: "failed", Error: "unsupported job type: " + job.Type}, nil
 	}
@@ -841,6 +865,10 @@ func (a *Adapter) ListMods(cfg *agent.InstanceConfig) ([]map[string]interface{},
 			if info != nil {
 				item["size"] = info.Size()
 				item["modTime"] = info.ModTime().UTC().Format(time.RFC3339)
+				item["activatedAt"] = info.ModTime().UTC().Format(time.RFC3339)
+			}
+			if !e.IsDir() && strings.HasSuffix(strings.ToLower(name), ".jar") {
+				enrichModRecord(cfg, item, filepath.Join(dir, name), nil, false)
 			}
 			out = append(out, item)
 		}

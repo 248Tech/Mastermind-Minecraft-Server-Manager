@@ -126,6 +126,7 @@ func (a *Adapter) ListQuarantinedMods(cfg *agent.InstanceConfig, payload map[str
 	if kindFilter != "" {
 		kinds = []string{kindFilter}
 	}
+	activeByID := buildActiveModIDIndex(cfg)
 	var out []map[string]interface{}
 	for _, kind := range kinds {
 		dir, err := quarantineDir(cfg, kind)
@@ -136,7 +137,18 @@ func (a *Adapter) ListQuarantinedMods(cfg *agent.InstanceConfig, payload map[str
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, items...)
+		for _, item := range items {
+			name, _ := item["folder"].(string)
+			path := filepath.Join(dir, name)
+			if strings.HasSuffix(strings.ToLower(name), ".jar") {
+				_ = stageConfigTemplatesForJar(cfg, path, name)
+				enrichModRecord(cfg, item, path, activeByID, true)
+			}
+			if item["activatedAt"] == nil {
+				item["activatedAt"] = item["modTime"]
+			}
+			out = append(out, item)
+		}
 	}
 	if out == nil {
 		out = []map[string]interface{}{}
@@ -214,6 +226,7 @@ func (a *Adapter) QuarantineMod(cfg *agent.InstanceConfig, payload map[string]in
 	if err := os.Rename(src, dest); err != nil {
 		return nil, fmt.Errorf("quarantine mod: %w", err)
 	}
+	_ = stageConfigTemplatesForJar(cfg, dest, name)
 	return map[string]interface{}{"quarantined": name, "folder": name, "kind": kind}, nil
 }
 
@@ -366,6 +379,7 @@ func (a *Adapter) UploadMod(cfg *agent.InstanceConfig, payload map[string]interf
 	} else {
 		result["quarantined"] = true
 		result["folder"] = folders[0]
+		stageUploadedJars(cfg, destRoot, folders)
 	}
 	return result, nil
 }
@@ -411,6 +425,12 @@ func extractJarsFromZip(zipPath, destRoot string) ([]string, error) {
 		return nil, fmt.Errorf("zip contained no .jar mods")
 	}
 	return folders, nil
+}
+
+func stageUploadedJars(cfg *agent.InstanceConfig, destRoot string, folders []string) {
+	for _, name := range folders {
+		_ = stageConfigTemplatesForJar(cfg, filepath.Join(destRoot, name), name)
+	}
 }
 
 func (a *Adapter) ApprovePendingMod(cfg *agent.InstanceConfig, payload map[string]interface{}) (map[string]interface{}, error) {

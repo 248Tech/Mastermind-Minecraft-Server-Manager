@@ -8,7 +8,7 @@ type View='active'|'quarantined'|'pending';
 type OrgRole='admin'|'operator'|'viewer';
 type ModActionType='MOD_QUARANTINE'|'MOD_DELETE'|'MOD_RESTORE';
 function guessModFolderFromZip(filename:string){let folder=filename.replace(/\.zip$/i,'');folder=folder.replace(/[^A-Za-z0-9._-]+/g,'_').replace(/^[-._]+|[-._]+$/g,'');if(folder.length>100)folder=folder.slice(0,100);return folder;}
-function restorePrompt(mod:ModRecord){const transfer=mod.transferConfig?' Config settings will be merged after restore.':'';if(mod.overrideActive&&mod.conflictsWithActive)return `Restore "${mod.folder}" and replace the active mod "${mod.restoreTarget||mod.folder}"?${transfer} It will load after restart.`;if(mod.conflictsWithActive&&mod.restoreTarget&&mod.restoreTarget!==mod.folder)return `Restore "${mod.folder}" to active as "${mod.restoreTarget}"? It will load after restart.`;return `Restore "${mod.folder}" to Mods? It will load after restart.`;}
+function restorePrompt(mod:ModRecord){const transfer=mod.transferConfig?' Config settings will be merged after restore.':'';if(mod.overrideActive&&mod.conflictsWithActive)return `Restore "${mod.folder}" and replace the active mod "${mod.restoreTarget||mod.folder}"?${transfer} It will load after restart.`;if(mod.conflictsWithActive&&mod.restoreTarget&&mod.restoreTarget!==mod.folder)return `Restore "${mod.folder}" to active as "${mod.restoreTarget}"? It will load after restart.`;return `Restore "${mod.folder}" to the mods folder? It will load after restart.`;}
 function activeReplaceFolder(mod:ModRecord){if(mod.overrideActive)return mod.restoreTarget||mod.folder;const side=/^(.*) \(\d+\)$/.exec(mod.restoreTarget||'');if(side)return side[1];return mod.restoreTarget||mod.folder;}
 function modActionPayload(mod:ModRecord,type:ModActionType,currentView:View,extra?:Record<string,unknown>){const payload:{folder:string;source?:string;forceOverride?:boolean;transferConfig?:boolean}={folder:mod.folder,...(extra||{})};if(type==='MOD_DELETE'&&currentView==='quarantined')payload.source='quarantine';return payload;}
 function listJobType(view:View){return view==='active'?'MOD_LIST':view==='pending'?'MOD_PENDING_LIST':'MOD_QUARANTINE_LIST';}
@@ -88,7 +88,7 @@ export default function ModsPage(){
       <div><strong style={{color:'#93c5fd'}}>Update from quarantined version</strong><div style={{color:'#64748b',fontSize:'.74rem',marginTop:3}}>Compare live configs to a quarantined copy of this mod, then choose replace with original or keep existing changes.</div></div>
       <button type="button" disabled={editorBusy||mergeBusy} onClick={()=>void loadConfigSources(editorMod)} style={button('#334155')}>Refresh sources</button>
      </div>
-     {configSourcesBusy?<div style={{color:'#94a3b8',fontSize:'.78rem'}}>Loading quarantined template sources…</div>:configSources.length===0?<div style={{color:'#94a3b8',fontSize:'.78rem'}}>No matching quarantined mod found. Open Quarantined Mods and confirm a copy of <code>{editorMod.folder}</code> is there (include <code>{editorMod.folder}_Config</code> in the ZIP when needed), then click Refresh sources.</div>:<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+     {configSourcesBusy?<div style={{color:'#94a3b8',fontSize:'.78rem'}}>Loading quarantined template sources…</div>:configSources.length===0?<div style={{color:'#94a3b8',fontSize:'.78rem'}}>No matching quarantined jar found. Upload a newer copy of <code>{editorMod.folder}</code> to Quarantined Mods (ZIP may include <code>config/</code> or <code>defaultconfigs/</code> templates), then click Refresh sources.</div>:<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
       <label style={{display:'flex',alignItems:'center',gap:6,color:'#94a3b8',fontSize:'.75rem',flex:'1 1 260px'}}>Template source<select aria-label="Quarantined template source" disabled={editorBusy||mergeBusy||configSourcesBusy} value={configSourceFolder} onChange={e=>setConfigSourceFolder(e.target.value)} style={{flex:1,marginLeft:6,background:'#111118',color:'#e2e8f0',border:'1px solid #3f3f59',borderRadius:6,padding:'.45rem .55rem'}}>{configSources.map(src=><option key={src.folder} value={src.folder}>{src.folder}{src.version?` · ${src.version}`:''}</option>)}</select></label>
       <button type="button" disabled={editorBusy||mergeBusy||configSourcesBusy||!configSourceFolder} onClick={()=>void startConfigUpdateFromEditor()} style={button('#b45309')} title="Opens review, then write new-mod defaults only">Replace with original…</button>
       <button type="button" disabled={editorBusy||mergeBusy||configSourcesBusy||!configSourceFolder} onClick={()=>void startConfigUpdateFromEditor()} style={button('#15803d')} title="Opens review, then additive merge of live settings into new defaults">Replace keeping existing changes…</button>
@@ -116,7 +116,7 @@ function ConfigFileNav({files,current,busy,dirty,onSelect}:{files:string[];curre
  for(const path of files){
   const meta=splitConfigPath(path);
   if(needle&&!meta.clean.toLowerCase().includes(needle)&&!meta.name.toLowerCase().includes(needle))continue;
-  const folder=meta.folder||'Mod folder';
+  const folder=meta.folder||'config';
   let group=seen.get(folder);
   if(!group){group={folder,files:[]};seen.set(folder,group);groups.push(group);}
   group.files.push({path,name:meta.name});

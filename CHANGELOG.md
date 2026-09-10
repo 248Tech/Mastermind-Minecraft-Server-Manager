@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0] - 2026-09-10
+
+### Added
+
+- NeoForge **config merge**: `MOD_CONFIG_READ` / `WRITE` / `MERGE_PREVIEW` / `MERGE_APPLY` for install paths under `config/` and `defaultconfigs/`.
+- Jar → modId discovery (`neoforge.mods.toml`) with config file listing on active mods.
+- Quarantine template staging under `mods/.quarantine/.config-templates/{jar}/` (jar defaults + pack defaultconfigs + live snapshots).
+- Ported additive `configmerge` engine (TOML/INI/JSON/XML); SNBT listed with skip warning.
+
+### Changed
+
+- Mods UI copy is jar/`config/{modId}` oriented (no 7DTD `{Mod}_Config` sibling wording).
+
 ## [0.3.0] - 2026-09-10
 
 ### Added

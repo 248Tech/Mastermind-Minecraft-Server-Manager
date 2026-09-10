@@ -66,9 +66,17 @@ Discovery syncs name (from MOTD), RCON port/password, world/level name, mod/plug
 | `SERVER_CONFIG_READ` / `WRITE` | `server.properties` |
 | `SAVE_BACKUP` | Copy world folder under `mastermind-backups/` |
 | `SERVER_WIPE_SAVE` | Delete world (requires `confirmed: true`) |
-| `MOD_LIST` | List jars under `mods/` / `plugins/` (`folder` = jar filename) |
+| `MOD_LIST` | List jars under `mods/` / `plugins/` (`folder` = jar filename); includes `configFiles` under `config/{modId}/` when present |
 | `MOD_QUARANTINE` / `MOD_APPROVE` / `MOD_RESTORE` / `MOD_DELETE` | Jar quarantine path; ZIP uploads extract jars; `forceOverride` on restore |
-| `MOD_CONFIG_MERGE_PREVIEW` / `MOD_CONFIG_MERGE_APPLY` | Config merge when templates exist |
+| `MOD_CONFIG_READ` / `MOD_CONFIG_WRITE` | Edit install-relative paths like `config/mekanism/general.toml` (max 256 KiB) |
+| `MOD_CONFIG_MERGE_PREVIEW` / `MOD_CONFIG_MERGE_APPLY` | Template-safe merge using quarantined jar templates under `mods/.quarantine/.config-templates/{jar}/` |
+
+## NeoForge config merge
+
+1. Jar → modId via `META-INF/neoforge.mods.toml` (quarantine/merge) or jar-name heuristic (active list).
+2. Live configs discovered under `config/{modId}/`, `config/{modId}.*`, and matching `defaultconfigs/`.
+3. On quarantine/upload, templates are staged from jar-embedded `defaultconfigs/`/`config/`, pack `defaultconfigs/`, then live `config/` snapshots.
+4. Merge is additive (template wins structure; live values carried for matching keys) for TOML/INI/CFG/JSON/XML; SNBT is listed but not auto-merged.
 
 ## Alerts
 
