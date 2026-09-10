@@ -303,8 +303,6 @@ model Player {
   online                  Boolean   @default(false)
   currentSessionStartedAt DateTime? @map("current_session_started_at")
   lifetimeSeconds         Int       @default(0) @map("lifetime_seconds")
-  deaths                  Int       @default(0)
-  level                   Int       @default(1)
   lastPosX                Float?    @map("last_pos_x")
   lastPosY                Float?    @map("last_pos_y")
   lastPosZ                Float?    @map("last_pos_z")

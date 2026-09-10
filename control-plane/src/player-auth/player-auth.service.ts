@@ -256,7 +256,7 @@ export class PlayerAuthService {
       select: {
         id: true, orgId: true, steamId: true, name: true, online: true, serverInstanceId: true,
         identityKey: true,
-        deaths: true, level: true, lifetimeSeconds: true,
+        lifetimeSeconds: true,
         currentSessionStartedAt: true, firstSeenAt: true, lastSeenAt: true, lastLogoutAt: true,
         lastPosX: true, lastPosY: true, lastPosZ: true,
         supporter: true, supporterSince: true, totalDonatedCents: true, portalPasswordHash: true,
@@ -296,8 +296,6 @@ export class PlayerAuthService {
         stats: {
           sessionSeconds,
           lifetimeSeconds: player.lifetimeSeconds + sessionSeconds,
-          level: player.level,
-          deaths: player.deaths,
         },
         donation: {
           status: player.supporter ? 'supporter' : 'ready',
@@ -331,8 +329,6 @@ export class PlayerAuthService {
       serverName: player.serverInstance.name,
       mapEmbedUrl: player.serverInstance.mapEmbedUrl ?? null,
       stats: {
-        level: player.level,
-        deaths: player.deaths,
         sessionSeconds,
         lifetimeSeconds: player.lifetimeSeconds + sessionSeconds,
         firstSeenAt: player.firstSeenAt.toISOString(),

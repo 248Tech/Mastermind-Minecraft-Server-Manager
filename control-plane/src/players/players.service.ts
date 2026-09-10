@@ -1,4 +1,4 @@
-import { BadRequestException, GoneException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { JobsService } from '../jobs/jobs.service';
 import { reconcileNameFallback } from './player-identity';
@@ -66,14 +66,5 @@ export class PlayersService implements OnModuleInit, OnModuleDestroy {
       const sessionSeconds = p.online && p.currentSessionStartedAt ? Math.max(0, Math.floor((now - p.currentSessionStartedAt.getTime()) / 1000)) : 0;
       return { ...p, sessionSeconds, lifetimeSeconds: p.lifetimeSeconds + sessionSeconds };
     });
-  }
-
-  async inventory(orgId: string, playerId: string) {
-    const player = await this.prisma.player.findFirst({
-      where: { id: playerId, orgId },
-      select: { id: true },
-    });
-    if (!player) throw new NotFoundException('Player not found');
-    throw new GoneException('Player inventory snapshots are not supported for Minecraft');
   }
 }

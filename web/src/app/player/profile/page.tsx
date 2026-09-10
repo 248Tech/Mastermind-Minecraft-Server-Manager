@@ -21,7 +21,6 @@ type Profile = {
   auth?: 'steam' | 'name';
   isAdmin?: boolean;
   stats?: {
-    deaths: number;
     sessionSeconds: number;
     lifetimeSeconds: number;
     firstSeenAt: string;
@@ -106,7 +105,6 @@ function PlayerProfileContent() {
   }
 
   const stats = profile.stats || {
-    deaths: 0,
     sessionSeconds: 0,
     lifetimeSeconds: 0,
     firstSeenAt: '',
@@ -174,7 +172,6 @@ function PlayerProfileContent() {
             <div className="pp-stats">
               <div className="pp-stat"><small>Session</small><strong>{profile.online ? duration(stats.sessionSeconds) : '—'}</strong></div>
               <div className="pp-stat"><small>Lifetime</small><strong>{duration(stats.lifetimeSeconds)}</strong></div>
-              <div className="pp-stat"><small>Deaths</small><strong>{stats.deaths}</strong></div>
               <div className="pp-stat"><small>Status</small><strong>{profile.online ? 'Online' : 'Offline'}</strong></div>
             </div>
             <div className="pp-quiet">

@@ -11,9 +11,4 @@ export class PlayersController {
   list(@Param('orgId') orgId: string, @Query('serverInstanceId') serverInstanceId?: string) {
     return this.players.list(orgId, serverInstanceId);
   }
-
-  @Get(':id/inventory')
-  inventory(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.players.inventory(orgId, id);
-  }
 }

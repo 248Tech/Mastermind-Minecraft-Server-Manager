@@ -38,7 +38,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
   private readonly badPingSamples = new Map<string, number>();
   private readonly protectionCooldown = new Map<string, number>();
   private readonly countryCache = new Map<string, { code: string; expires: number }>();
-  private readonly deathPins = new Map<string, { deaths: number; until: number }>();
   private staleTimer?: NodeJS.Timeout;
   constructor(
     private readonly prisma: PrismaService,
@@ -108,22 +107,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
       if (membership?.role.name !== 'admin') {
         throw new ForbiddenException('Only organization administrators may change game administrators');
       }
-    }
-    if (normalizedJobType === 'PLAYER_SET_DEATHS') {
-      const membership = await this.prisma.userOrg.findUnique({
-        where: { userId_orgId: { userId, orgId } },
-        include: { role: true },
-      });
-      if (!membership || !['admin', 'operator'].includes(membership.role.name)) {
-        throw new ForbiddenException('Only organization administrators or operators may edit player deaths');
-      }
-      const deaths = Number(payload?.deaths);
-      if (!Number.isInteger(deaths) || deaths < 0 || deaths > 100_000) {
-        throw new BadRequestException('Deaths must be a whole number from 0 to 100000');
-      }
-      const identifier = typeof payload?.identifier === 'string' ? payload.identifier.trim() : '';
-      if (!identifier) throw new BadRequestException('Player identifier is required');
-      payload = { ...(payload ?? {}), deaths, identifier };
     }
     if (normalizedJobType === 'PLAYER_KICK_ALL' || normalizedJobType === 'SERVER_KILL') {
       const membership = await this.prisma.userOrg.findUnique({
@@ -389,20 +372,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         await this.schedulerService.skipNextAutoRestart(run.job.orgId, run.job.serverInstanceId, 'stability_restart');
       }
     }
-    if (run.job.type === 'PLAYER_SET_DEATHS' && runStatus === 'success' && run.job.serverInstanceId) {
-      const payload = (run.job.payload ?? {}) as Record<string, unknown>;
-      const deaths = Number(payload.deaths);
-      const playerId = typeof payload.playerId === 'string' ? payload.playerId : '';
-      if (Number.isInteger(deaths) && playerId) {
-        const player = await this.prisma.player.findFirst({ where: { id: playerId, orgId: run.job.orgId, serverInstanceId: run.job.serverInstanceId } });
-        if (player) {
-          await this.prisma.player.update({ where: { id: player.id }, data: { deaths } });
-          const until = Date.now() + 10 * 60_000;
-          this.deathPins.set(player.id, { deaths, until });
-          this.deathPins.set(`${player.serverInstanceId}:${player.identityKey}`, { deaths, until });
-        }
-      }
-    }
     if (run.job.type === 'PLAYER_LIST_SYNC' && runStatus === 'success' && run.job.serverInstanceId) {
       const rows = parseMinecraftRoster(dto.result);
       if (rows) {
@@ -479,21 +448,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     return { ok: true };
   }
 
-  private rosterDeaths(serverInstanceId: string, identityKey: string, playerId: string | null | undefined, live: number) {
-    pruneMap(this.deathPins, (pin) => pin.until > Date.now());
-    const keys = [playerId, `${serverInstanceId}:${identityKey}`].filter((key): key is string => Boolean(key));
-    for (const key of keys) {
-      const pin = this.deathPins.get(key);
-      if (!pin || pin.until <= Date.now()) continue;
-      if (live === pin.deaths) {
-        for (const drop of keys) this.deathPins.delete(drop);
-        return live;
-      }
-      return pin.deaths;
-    }
-    return live;
-  }
-
   private async applyPlayerRoster(orgId: string, serverInstanceId: string, rows: PlayerRosterRow[]) {
     const now = new Date();
     const server = await this.prisma.serverInstance.findUnique({
@@ -516,8 +470,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           online: true,
           currentSessionStartedAt: now,
           lastSeenAt: now,
-          deaths: this.rosterDeaths(serverInstanceId, row.identityKey, null, row.deaths),
-          level: row.level ?? 1,
           ...(row.position ? { lastPosX: row.position.x, lastPosY: row.position.y, lastPosZ: row.position.z } : {}),
         },
         update: {
@@ -526,25 +478,11 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           name: row.name,
           online: true,
           lastSeenAt: now,
-          ...(row.level != null ? { level: row.level } : {}),
-          ...(row.deaths > 0 || existing?.deaths == null
-            ? { deaths: this.rosterDeaths(serverInstanceId, row.identityKey, existing?.id, row.deaths) }
-            : {}),
           ...(row.position ? { lastPosX: row.position.x, lastPosY: row.position.y, lastPosZ: row.position.z } : {}),
           ...(!existing?.online ? { currentSessionStartedAt: now } : {}),
         },
       });
       if (!existing?.online) await this.prisma.playerSession.create({ data: { playerId: player.id, startedAt: now } });
-      const previousLevel = existing?.level ?? 0;
-      const newLevel = row.level ?? existing?.level ?? 1;
-      if (row.level != null) {
-        await this.triggers.evaluateLevel(orgId, serverInstanceId, {
-          id: player.id,
-          name: player.name,
-          steamId: player.steamId,
-          level: newLevel,
-        }, previousLevel, newLevel).catch(() => undefined);
-      }
       if (!existing?.online) {
         await this.triggers.retryPendingItemGrantsForPlayer(player.id).catch(() => undefined);
         const uuid = row.identityKey.startsWith('uuid:') ? row.identityKey.slice(5) : undefined;

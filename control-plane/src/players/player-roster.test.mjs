@@ -21,7 +21,7 @@ assert(Array.isArray(roster) && roster.length === 3, 'parses minecraft players a
 assert(roster[0].name === 'Steve' && roster[0].identityKey === 'uuid:550e8400-e29b-41d4-a716-446655440000', 'uuid identity');
 assert(roster[1].name === 'Alex' && roster[1].identityKey === 'name:alex', 'name fallback identity');
 assert(roster[2].name === 'Bob' && roster[2].identityKey.startsWith('uuid:'), 'accepts id as uuid');
-assert(roster.every((row) => row.playerKills === undefined && row.deaths === 0), 'no playerKills; deaths default 0');
+assert(roster.every((row) => row.playerKills === undefined && !('deaths' in row) && !('level' in row)), 'no combat/level fields on minecraft roster');
 
 assert(parseMinecraftRoster({ players: [] })?.length === 0, 'empty players list is usable');
 assert(parseMinecraftRoster(null) === null, 'null result falls back');

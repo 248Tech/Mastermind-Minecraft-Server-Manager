@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.12.0] - 2026-09-10
+
+### Removed
+
+- Player `deaths` and `level` columns (migration `20260910000007_drop_player_deaths_level`).
+- `PLAYER_SET_DEATHS` control-plane job path and death-pin logic.
+- `GET …/players/:id/inventory` route (410 stub removed).
+- Level-based `player_level` trigger event (create UI disabled until Minecraft progression sync exists).
+- 7DTD chat log parser and `entityId` on new chat event payloads.
+
+### Changed
+
+- Roster reconcile no longer writes death/level counters.
+- Player portal profile is playtime-focused (no deaths stat).
+- Triggers page explains level rewards are unavailable on Minecraft for now.
+
 ## [0.11.0] - 2026-09-10
 
 ### Removed

@@ -41,8 +41,6 @@ export async function reconcileNameFallback(
       data: {
         steamId: steamId ?? canonical.steamId,
         lifetimeSeconds: { increment: fallback.lifetimeSeconds },
-        deaths: Math.max(canonical.deaths, fallback.deaths),
-        level: Math.max(canonical.level, fallback.level),
         firstSeenAt: fallback.firstSeenAt < canonical.firstSeenAt ? fallback.firstSeenAt : canonical.firstSeenAt,
         lastSeenAt: fallback.lastSeenAt > canonical.lastSeenAt ? fallback.lastSeenAt : canonical.lastSeenAt,
         online,

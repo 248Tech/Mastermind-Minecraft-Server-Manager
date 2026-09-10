@@ -104,7 +104,7 @@ func TestReadOnlyClassification(t *testing.T) {
 			t.Errorf("%s should be read-only", jobType)
 		}
 	}
-	for _, jobType := range []string{"RCON", "SEND_COMMAND", "SERVER_RESTART", "PLAYER_KICK", "PLAYER_SET_DEATHS", "MOD_DELETE"} {
+	for _, jobType := range []string{"RCON", "SEND_COMMAND", "SERVER_RESTART", "PLAYER_KICK", "MOD_DELETE"} {
 		if isReadOnly(jobType) {
 			t.Errorf("%s must be serialized", jobType)
 		}

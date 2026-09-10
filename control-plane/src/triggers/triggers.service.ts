@@ -1,19 +1,12 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { JobsService } from '../jobs/jobs.service';
 import {
   TRIGGER_ACTION_GRANT_ITEMS,
   TRIGGER_ACTIONS,
-  TRIGGER_EVENT_PLAYER_LEVEL,
   TRIGGER_EVENTS,
-  eventKeyForLevel,
   grantItemsSummary,
   parseGrantItemsActionConfig,
-  parsePlayerLevelConfig,
-  playerReachedLevel,
-  type GrantItemsActionConfig,
-  type PlayerLevelConfig,
 } from './catalog';
 import { classifyGrantOutput } from '../donations/shop-grants';
 
@@ -27,6 +20,8 @@ export type TriggerInput = {
   actionConfig: unknown;
   applyToExisting?: boolean;
 };
+
+const NO_EVENTS_MESSAGE = 'Level triggers require Minecraft progression sync (not yet available)';
 
 @Injectable()
 export class TriggersService {
@@ -50,88 +45,42 @@ export class TriggersService {
     const trigger = await this.requireTrigger(orgId, triggerId);
     return this.prisma.triggerFire.findMany({
       where: { triggerId: trigger.id },
-      include: { player: { select: { id: true, name: true, steamId: true, level: true } } },
+      include: { player: { select: { id: true, name: true, steamId: true } } },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
   }
 
-  async create(orgId: string, userId: string, input: TriggerInput) {
-    await this.requireServer(orgId, input.serverInstanceId);
-    const data = this.validatedData(input);
-    const trigger = await this.prisma.trigger.create({
-      data: { orgId, createdById: userId, ...data },
-    });
-    if (trigger.applyToExisting && trigger.enabled) {
-      await this.applyToExistingPlayers(trigger.id).catch(() => undefined);
-    }
-    return trigger;
+  async create(_orgId: string, _userId: string, _input: TriggerInput) {
+    throw new BadRequestException(NO_EVENTS_MESSAGE);
   }
 
   async update(orgId: string, id: string, input: Partial<TriggerInput>) {
     const current = await this.requireTrigger(orgId, id);
-    const merged: TriggerInput = {
-      name: input.name ?? current.name,
-      serverInstanceId: input.serverInstanceId ?? current.serverInstanceId,
-      enabled: input.enabled ?? current.enabled,
-      eventType: input.eventType ?? current.eventType,
-      eventConfig: input.eventConfig ?? current.eventConfig,
-      actionType: input.actionType ?? current.actionType,
-      actionConfig: input.actionConfig ?? current.actionConfig,
-      applyToExisting: input.applyToExisting ?? current.applyToExisting,
-    };
-    if (merged.serverInstanceId !== current.serverInstanceId) {
-      await this.requireServer(orgId, merged.serverInstanceId);
+    if (
+      input.eventType != null
+      || input.eventConfig != null
+      || input.actionType != null
+      || input.actionConfig != null
+      || input.serverInstanceId != null
+      || input.applyToExisting != null
+    ) {
+      throw new BadRequestException(NO_EVENTS_MESSAGE);
     }
-    const data = this.validatedData(merged);
-    const trigger = await this.prisma.trigger.update({ where: { id: current.id }, data });
-    if (trigger.applyToExisting && trigger.enabled) {
-      await this.applyToExistingPlayers(trigger.id).catch(() => undefined);
+    const data: { name?: string; enabled?: boolean } = {};
+    if (input.name != null) {
+      const name = input.name.trim();
+      if (!name || name.length > 80) throw new BadRequestException('Name is required (max 80 characters)');
+      data.name = name;
     }
-    return trigger;
+    if (input.enabled != null) data.enabled = input.enabled;
+    if (Object.keys(data).length === 0) return current;
+    return this.prisma.trigger.update({ where: { id: current.id }, data });
   }
 
   async remove(orgId: string, id: string) {
     await this.requireTrigger(orgId, id);
     await this.prisma.trigger.delete({ where: { id } });
-  }
-
-  async evaluateLevel(
-    orgId: string,
-    serverInstanceId: string,
-    player: { id: string; name: string; steamId: string | null; level: number },
-    previousLevel: number,
-    newLevel: number,
-  ) {
-    if (!Number.isInteger(newLevel) || newLevel < 1) return;
-    const triggers = await this.prisma.trigger.findMany({
-      where: { orgId, serverInstanceId, enabled: true, eventType: TRIGGER_EVENT_PLAYER_LEVEL },
-    });
-    for (const trigger of triggers) {
-      const event = parsePlayerLevelConfig(trigger.eventConfig);
-      const crossed = playerReachedLevel(event.comparison, previousLevel, newLevel, event.level);
-      if (!crossed) {
-        if (!trigger.applyToExisting || newLevel < event.level) continue;
-        const existingFire = await this.prisma.triggerFire.findUnique({
-          where: { triggerId_playerId_eventKey: { triggerId: trigger.id, playerId: player.id, eventKey: eventKeyForLevel(event.level) } },
-        });
-        if (existingFire) continue;
-      }
-      await this.fireTrigger(trigger, player, event.level).catch(() => undefined);
-    }
-  }
-
-  async applyToExistingPlayers(triggerId: string) {
-    const trigger = await this.prisma.trigger.findUnique({ where: { id: triggerId } });
-    if (!trigger || !trigger.enabled) return;
-    const event = parsePlayerLevelConfig(trigger.eventConfig);
-    const players = await this.prisma.player.findMany({
-      where: { serverInstanceId: trigger.serverInstanceId, level: { gte: event.level } },
-      select: { id: true, name: true, steamId: true, level: true },
-    });
-    for (const player of players) {
-      await this.fireTrigger(trigger, player, event.level).catch(() => undefined);
-    }
   }
 
   async completeItemGrant(payload: Record<string, unknown>, runStatus: string, output: string) {
@@ -149,12 +98,11 @@ export class TriggersService {
         trigger: { orgId, serverInstanceId, enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
         player: { online: true, steamId: { not: null } },
       },
-      include: { trigger: true, player: { select: { id: true, name: true, steamId: true, level: true } } },
+      include: { trigger: true, player: { select: { id: true, name: true, steamId: true } } },
       take: 32,
     });
     for (const fire of fires) {
-      const event = parsePlayerLevelConfig(fire.trigger.eventConfig);
-      await this.enqueueGrantItems(fire.trigger, fire.player, event.level, false).catch(() => undefined);
+      await this.enqueueGrantItems(fire.trigger, fire.player, fire.eventKey, false).catch(() => undefined);
     }
   }
 
@@ -165,43 +113,21 @@ export class TriggersService {
         status: 'pending',
         trigger: { enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
       },
-      include: { trigger: true, player: { select: { id: true, name: true, steamId: true, level: true } } },
+      include: { trigger: true, player: { select: { id: true, name: true, steamId: true } } },
       take: 16,
     });
     for (const fire of fires) {
-      const event = parsePlayerLevelConfig(fire.trigger.eventConfig);
-      await this.enqueueGrantItems(fire.trigger, fire.player, event.level, false).catch(() => undefined);
+      await this.enqueueGrantItems(fire.trigger, fire.player, fire.eventKey, false).catch(() => undefined);
     }
-  }
-
-  private async fireTrigger(
-    trigger: { id: string; actionType: string },
-    player: { id: string; name: string; steamId: string | null; level: number },
-    level: number,
-  ) {
-    if (trigger.actionType === TRIGGER_ACTION_GRANT_ITEMS) {
-      await this.fireGrantItems(trigger.id, player, level);
-    }
-  }
-
-  private async fireGrantItems(
-    triggerId: string,
-    player: { id: string; name: string; steamId: string | null; level: number },
-    level: number,
-  ) {
-    const trigger = await this.prisma.trigger.findUnique({ where: { id: triggerId } });
-    if (!trigger) return;
-    await this.enqueueGrantItems(trigger, player, level, true);
   }
 
   private async enqueueGrantItems(
     trigger: { id: string; orgId: string; serverInstanceId: string; createdById: string | null; actionConfig: unknown },
-    player: { id: string; name: string; steamId: string | null; level: number },
-    level: number,
+    player: { id: string; name: string; steamId: string | null },
+    eventKey: string,
     recordFire: boolean,
   ) {
     const action = parseGrantItemsActionConfig(trigger.actionConfig);
-    const eventKey = eventKeyForLevel(level);
     const summary = grantItemsSummary(action.items);
     let fireId: string | null = null;
     if (recordFire) {
@@ -223,6 +149,7 @@ export class TriggersService {
       if (fireId) await this.prisma.triggerFire.update({ where: { id: fireId }, data: { status: 'failed' } });
       return;
     }
+    const levelHint = eventKey.startsWith('level:') ? eventKey.slice(6) : '';
     const queued = await this.jobs.enqueueInternalJob(trigger.orgId, trigger.createdById, trigger.serverInstanceId, 'TRIGGER_GRANT_ITEMS', {
       triggerId: trigger.id,
       triggerFireId: fireId,
@@ -233,7 +160,7 @@ export class TriggersService {
       notifyPlayer: action.notifyPlayer,
       message: action.message
         .replaceAll('{name}', player.name)
-        .replaceAll('{level}', String(player.level))
+        .replaceAll('{level}', levelHint)
         .replaceAll('{items}', summary),
     });
     if (recordFire && fireId) {
@@ -251,38 +178,6 @@ export class TriggersService {
         data: { jobId: queued.jobId, status: 'queued' },
       });
     }
-  }
-
-  private validatedData(input: TriggerInput) {
-    const name = input.name?.trim();
-    if (!name || name.length > 80) throw new BadRequestException('Name is required (max 80 characters)');
-    if (input.eventType !== TRIGGER_EVENT_PLAYER_LEVEL) throw new BadRequestException('Unsupported trigger event');
-    if (input.actionType !== TRIGGER_ACTION_GRANT_ITEMS) {
-      throw new BadRequestException('Unsupported trigger action');
-    }
-    let eventConfig: PlayerLevelConfig;
-    let actionConfig: GrantItemsActionConfig;
-    try {
-      eventConfig = parsePlayerLevelConfig(input.eventConfig);
-      actionConfig = parseGrantItemsActionConfig(input.actionConfig);
-    } catch (error) {
-      throw new BadRequestException(error instanceof Error ? error.message : 'Invalid trigger configuration');
-    }
-    return {
-      name,
-      serverInstanceId: input.serverInstanceId,
-      enabled: input.enabled !== false,
-      eventType: TRIGGER_EVENT_PLAYER_LEVEL,
-      eventConfig: eventConfig as unknown as Prisma.InputJsonValue,
-      actionType: input.actionType,
-      actionConfig: actionConfig as unknown as Prisma.InputJsonValue,
-      applyToExisting: input.applyToExisting === true,
-    };
-  }
-
-  private async requireServer(orgId: string, serverInstanceId: string) {
-    const server = await this.prisma.serverInstance.findFirst({ where: { id: serverInstanceId, orgId } });
-    if (!server) throw new BadRequestException('Server instance not found');
   }
 
   private async requireTrigger(orgId: string, id: string) {

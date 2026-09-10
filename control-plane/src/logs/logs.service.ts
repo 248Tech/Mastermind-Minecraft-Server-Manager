@@ -45,18 +45,11 @@ export class LogsService {
     for (const line of lines) {
       // Minecraft / Paper / NeoForge: "<Name> message" or "[Not Secure] <Name> message"
       const mcMatch = line.match(/\]:\s*(?:\[Not Secure\]\s*)?<([^>\n]{1,32})>\s+(.+)$/);
-      // Legacy 7DTD chat (ignored once removed, but harmless during transition)
-      const playerMatch = line.match(/\bChat \(from '([^']+)', entity id '([^']+)', to '([^']+)'\): '(.*)': (.*)$/);
-      const serverMatch = line.match(/\bChat \(from '-non-player-', entity id '-1', to '([^']+)'\): (.*)$/);
-      if (!mcMatch && !playerMatch && !serverMatch) continue;
-      const isServer = !!serverMatch;
-      const playerId = mcMatch ? mcMatch[1] : isServer ? '-non-player-' : playerMatch![1];
-      const entityId = mcMatch ? '' : isServer ? '-1' : playerMatch![2];
-      const channel = mcMatch ? 'Global' : isServer ? serverMatch![1] : playerMatch![3];
-      const rawName = mcMatch ? mcMatch[1] : isServer ? 'Server' : playerMatch![4];
-      const rawMessage = mcMatch ? mcMatch[2] : isServer ? serverMatch![2] : playerMatch![5];
-      const playerName = rawName.trim().slice(0, 128);
-      const message = rawMessage.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, 2000);
+      if (!mcMatch) continue;
+      const playerId = mcMatch[1];
+      const channel = 'Global';
+      const playerName = mcMatch[1].trim().slice(0, 128);
+      const message = mcMatch[2].replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, 2000);
       if (!playerName || !message) continue;
       const logTimestamp = line.match(/^(\S+)/)?.[1] ?? '';
       if (logTimestamp) {
@@ -67,8 +60,7 @@ export class LogsService {
         if (duplicate) continue;
       }
       const event = await this.prisma.event.create({ data: { orgId, sourceType: 'server_instance', sourceId: serverInstanceId, eventType: 'player_chat',
-        payload: { playerId, entityId, playerName, channel, message, serverInstanceName, logTimestamp } } });
-      if (isServer) continue;
+        payload: { playerId, playerName, channel, message, serverInstanceName, logTimestamp } } });
       const moderated = await this.moderateChat(orgId, serverInstanceId, playerId, playerName, message).catch(() => false);
       if (moderated) continue;
       const relay = await this.alerts.relayPlayerChat({ eventId: event.id, orgId, serverInstanceId, serverInstanceName, playerName, playerId, channel, message });

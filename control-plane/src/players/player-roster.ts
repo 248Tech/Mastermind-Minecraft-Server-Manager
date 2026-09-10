@@ -4,8 +4,6 @@ export type PlayerRosterRow = {
   steamId: string | null;
   ipAddress: string | null;
   ping: number | null;
-  level: number | null;
-  deaths: number;
   position: { x: number; y: number; z: number } | null;
 };
 
@@ -49,8 +47,6 @@ export function parseMinecraftRoster(result: unknown): PlayerRosterRow[] | null 
       steamId: null,
       ipAddress: null,
       ping: null,
-      level: null,
-      deaths: 0,
       position: null,
     });
   }
