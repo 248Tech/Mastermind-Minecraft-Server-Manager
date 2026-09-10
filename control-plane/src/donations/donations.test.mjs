@@ -188,7 +188,6 @@ assert(parseGrantItemName('resourceWood') === 'resourceWood', 'accepts 7DTD item
 assert(parseGrantItemName('all') === null, 'rejects giveplus all alias');
 assert(parseGrantItemName('resourceWood; kick 1') === null, 'rejects command injection in item names');
 assert(buildGivePlusCommand('Steve', 'minecraft:oak_log', 12) === 'give Steve minecraft:oak_log 12', 'builds give');
-assert(buildGivePlusCommand('Steve', 'minecraft:oak_log', 12, 4) === 'give Steve minecraft:oak_log 12', 'quality ignored for Minecraft give');
 assert(buildGivePlusCommand('all', 'resourceWood', 1) === null, 'never targets all players');
 assert(classifyGrantOutput('ERR: Player not found.', 'failed') === 'retry', 'offline giveplus retries');
 assert(classifyGrantOutput('There is no such item', 'success') === 'failed', 'unknown items fail closed');

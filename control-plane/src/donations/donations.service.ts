@@ -260,7 +260,7 @@ export class DonationsService {
       const grantItems = snapshotLineGrants(
         parsed !== false && parsed.length
           ? parsed
-          : (parseGrantItemList(item?.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity, quality: null }] : []) || []),
+          : (parseGrantItemList(item?.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity }] : []) || []),
       );
       const first = grantItems[0];
       return {
@@ -268,7 +268,7 @@ export class DonationsService {
         itemName: item?.name ?? 'Shop item',
         amountCents,
         quantity: 1,
-        grantItems: grantItems.map((g) => ({ ...g, quality: null })) as Prisma.InputJsonValue,
+        grantItems: grantItems as Prisma.InputJsonValue,
         grantItemName: first?.name ?? null,
         grantQuantity: first ? first.quantity : null,
         grantStatus: aggregateGrantStatus(grantItems),

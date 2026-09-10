@@ -8,7 +8,6 @@ import { randomUUID } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { parsePortalPassword, parsePortalPlayerName, parseShopReturnPath } from './player-auth.names';
-import { emptyPlayerPlaces } from './player-places';
 
 const STEAM_OPENID = 'https://steamcommunity.com/openid/login';
 const CLAIMED_ID = /^https?:\/\/steamcommunity\.com\/openid\/id\/(7656119\d{10})$/;
@@ -257,7 +256,7 @@ export class PlayerAuthService {
       select: {
         id: true, orgId: true, steamId: true, entityId: true, name: true, online: true, serverInstanceId: true,
         identityKey: true,
-        playerKills: true, deaths: true, level: true, lifetimeSeconds: true,
+        deaths: true, level: true, lifetimeSeconds: true,
         currentSessionStartedAt: true, firstSeenAt: true, lastSeenAt: true, lastLogoutAt: true,
         lastPosX: true, lastPosY: true, lastPosZ: true, lastInventory: true, lastInventoryAt: true,
         supporter: true, supporterSince: true, totalDonatedCents: true, portalPasswordHash: true,
@@ -335,7 +334,6 @@ export class PlayerAuthService {
       mapEmbedUrl: player.serverInstance.mapEmbedUrl ?? null,
       stats: {
         level: player.level,
-        playerKills: player.playerKills,
         deaths: player.deaths,
         sessionSeconds,
         lifetimeSeconds: player.lifetimeSeconds + sessionSeconds,
@@ -389,17 +387,6 @@ export class PlayerAuthService {
     return { serverName: player.serverInstance.name, mods };
   }
 
-  async portalPOIs(token: string) {
-    const player = await this.requirePlayer(token);
-    const server = await this.portalServer();
-    if (server.orgId !== player.orgId) throw new ForbiddenException('Player portal server is unavailable');
-    return { serverName: server.name, indexedAt: null, pois: [], truncated: false };
-  }
-
-  async portalPOIPreview(_token: string, name: string) {
-    return { name, available: false };
-  }
-
   async requestMod(token: string, file: { originalname: string; size: number; buffer: Buffer } | undefined, description: unknown) {
     const player = await this.requirePlayer(token);
     const text = typeof description === 'string' ? description.trim() : '';
@@ -446,15 +433,5 @@ export class PlayerAuthService {
       await new Promise((resolve) => setTimeout(resolve, 400));
     }
     throw new GatewayTimeoutException('The game did not answer in time');
-  }
-
-  async places(token: string) {
-    const player = await this.requirePlayer(token);
-    // Minecraft portals use BlueMap/Dynmap embeds; land/home layers are unused.
-    return emptyPlayerPlaces(player.sessionAuth, false);
-  }
-
-  async returnVehicle(_token: string, _vehicleKey: string) {
-    throw new BadRequestException('Vehicle return is not available for Minecraft');
   }
 }

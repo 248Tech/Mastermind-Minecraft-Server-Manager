@@ -23,7 +23,7 @@ import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { pruneMap } from '../common/ttl-map';
 import { parseInventoryOutput, type InventorySnapshot } from '../players/player-inventory';
-import { parseLpRoster, parseMinecraftRoster, type PlayerRosterRow } from '../players/player-roster';
+import { parseMinecraftRoster, type PlayerRosterRow } from '../players/player-roster';
 import { decryptIntegrationSecret } from '../orgs/integration-crypto';
 import {
   MAX_GRANT_ATTEMPTS,
@@ -406,7 +406,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
       }
     }
     if (run.job.type === 'PLAYER_LIST_SYNC' && runStatus === 'success' && run.job.serverInstanceId) {
-      const rows = parseMinecraftRoster(dto.result) ?? (dto.output ? parseLpRoster(dto.output) : null);
+      const rows = parseMinecraftRoster(dto.result);
       if (rows) {
         await this.applyPlayerRoster(run.job.orgId, run.job.serverInstanceId, rows);
         await this.enforceConnectionTools(run.job.orgId, run.job.serverInstanceId, rows);
@@ -484,11 +484,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     return { ok: true };
   }
 
-  async trySyncPlayersFromAllocs(_orgId: string, _serverInstanceId: string): Promise<{ needsLpStats: boolean } | false> {
-    // Allocs/WebMap sync was 7DTD-only; Minecraft uses PLAYER_LIST_SYNC via the agent.
-    return false;
-  }
-
   private rosterDeaths(serverInstanceId: string, identityKey: string, playerId: string | null | undefined, live: number) {
     pruneMap(this.deathPins, (pin) => pin.until > Date.now());
     const keys = [playerId, `${serverInstanceId}:${identityKey}`].filter((key): key is string => Boolean(key));
@@ -539,7 +534,6 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           online: true,
           lastSeenAt: now,
           ...(row.level != null ? { level: row.level } : {}),
-          ...(row.playerKills > 0 ? { playerKills: row.playerKills } : {}),
           ...(row.deaths > 0 || existing?.deaths == null
             ? { deaths: this.rosterDeaths(serverInstanceId, row.identityKey, existing?.id, row.deaths) }
             : {}),
@@ -662,7 +656,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         const grant = grants[index];
         const due = grant.status === 'pending' || (grant.status === 'queued' && stale);
         if (!due || grant.attempts >= MAX_GRANT_ATTEMPTS) continue;
-        const command = buildGiveCommand(playerName, grant.name, grant.quantity, grant.quality, uuid);
+        const command = buildGiveCommand(playerName, grant.name, grant.quantity, uuid);
         if (!command) {
           grants[index] = { ...grant, status: 'failed', error: 'Invalid grant item' };
           await this.prisma.donationLine.update({

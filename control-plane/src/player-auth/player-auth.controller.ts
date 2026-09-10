@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, GoneException, Headers, Post, Query, Req, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, Req, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PlayerAuthService } from './player-auth.service';
 import { AuthRateLimitService } from '../auth/auth-rate-limit.service';
@@ -52,18 +52,6 @@ export class PlayerAuthController {
     return this.auth.portalMods(authorization.slice(7));
   }
 
-  @Get('pois')
-  pois(@Headers('authorization') authorization?: string) {
-    if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player session required');
-    throw new GoneException('POI search is not available for Minecraft servers');
-  }
-
-  @Get('pois/preview')
-  poiPreview(@Headers('authorization') authorization?: string, @Query('name') _name?: string) {
-    if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player session required');
-    throw new GoneException('POI preview is not available for Minecraft servers');
-  }
-
   @Post('mod-request')
   @UseInterceptors(FileInterceptor('file', { limits: { files: 1, fileSize: 256 * 1024 * 1024 } }))
   requestMod(
@@ -73,40 +61,5 @@ export class PlayerAuthController {
   ) {
     if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player sign-in required');
     return this.auth.requestMod(authorization.slice(7), file, description);
-  }
-
-  @Get('places')
-  places(@Headers('authorization') authorization?: string) {
-    if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player session required');
-    throw new GoneException('Claims, homes, and vehicles are not available for Minecraft servers');
-  }
-
-  @Post('vehicles/return')
-  returnVehicle(@Headers('authorization') authorization?: string) {
-    if (!authorization?.startsWith('Bearer ')) throw new UnauthorizedException('Player session required');
-    throw new GoneException('Vehicle return is not available for Minecraft servers');
-  }
-
-  @Get('map/entities')
-  async mapEntities(@Headers('authorization') authorization?: string) {
-    // Minecraft portals embed BlueMap/Dynmap; Allocs entity feeds are unused.
-    if (authorization?.startsWith('Bearer ')) {
-      try {
-        await this.auth.requirePlayer(authorization.slice(7));
-      } catch {
-        /* optional auth — still return empty payload */
-      }
-    }
-    return {
-      players: [],
-      animals: [],
-      hostiles: [],
-      playerVisibility: 'hidden' as const,
-      errors: {
-        players: 'Map entities unavailable for Minecraft',
-        animals: 'Map entities unavailable for Minecraft',
-        hostiles: 'Map entities unavailable for Minecraft',
-      },
-    };
   }
 }

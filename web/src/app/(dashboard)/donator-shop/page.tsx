@@ -16,8 +16,8 @@ type JobResult = { data?: { items?: string[] }; errorMessage?: string };
 type CatalogResponse = { items?: string[]; jobRunId?: string; cached?: boolean; count?: number };
 
 function grantsFromItem(item: Pick<ShopItem, 'grantItems' | 'grantItemName' | 'grantQuantity'>): GrantDraft[] {
-  if (item.grantItems?.length) return item.grantItems.map((row) => ({ name: row.name, quantity: row.quantity || 1, quality: row.quality ?? null }));
-  if (item.grantItemName) return [{ name: item.grantItemName, quantity: item.grantQuantity || 1, quality: null }];
+  if (item.grantItems?.length) return item.grantItems.map((row) => ({ name: row.name, quantity: row.quantity || 1 }));
+  if (item.grantItemName) return [{ name: item.grantItemName, quantity: item.grantQuantity || 1 }];
   return [];
 }
 
@@ -139,7 +139,7 @@ export default function DonatorShopPage() {
     try {
       await api.upload(`/api/orgs/${orgId}/shop-items`, formData({
         name, description, price, active: 'true',
-        grantItems: JSON.stringify(grants.filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity, quality: null }))),
+        grantItems: JSON.stringify(grants.filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity }))),
       }, image));
       setName(''); setDescription(''); setPrice('10.00'); setGrants([]); setImage(null);
       setMessage('Shop item created.');
@@ -160,7 +160,7 @@ export default function DonatorShopPage() {
         description: item.description,
         price: (item.priceCents / 100).toFixed(2),
         active: String(item.active),
-        grantItems: JSON.stringify((item.grantItems || grantsFromItem(item)).filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity, quality: null }))),
+        grantItems: JSON.stringify((item.grantItems || grantsFromItem(item)).filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity }))),
       }, editImage), 'PATCH');
       setEditing(null); setEditImage(null);
       setMessage('Shop item updated.');

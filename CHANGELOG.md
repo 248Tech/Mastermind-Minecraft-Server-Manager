@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.0] - 2026-09-10
+
+### Removed
+
+- Player portal places / vehicles / POI / map-entity Gone stubs and web proxies.
+- 7DTD `lp` / Allocs roster parsers; Minecraft `PLAYER_LIST_SYNC` is the only path.
+- `Player.playerKills` column (migration `20260910000005_drop_player_kills`).
+- Grant `quality` from shop/trigger types and RCON `give` builders (legacy JSON keys ignored).
+
+### Changed
+
+- Roster identity helpers are Minecraft/Steam oriented without PvP kill counters.
+
 ## [0.9.0] - 2026-09-10
 
 ### Removed

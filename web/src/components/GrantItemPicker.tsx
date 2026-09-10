@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type UIEvent } from 'react';
 
-export type GrantDraft = { name: string; quantity: number; quality: number | null };
-export const emptyGrant = (): GrantDraft => ({ name: '', quantity: 1, quality: null });
+export type GrantDraft = { name: string; quantity: number };
+export const emptyGrant = (): GrantDraft => ({ name: '', quantity: 1 });
 
 const inputStyle: CSSProperties = { padding: '0.55rem 0.875rem', borderRadius: 7, border: '1px solid #252532', fontSize: '0.875rem', background: '#0d0d14', color: '#f1f5f9', width: '100%', outline: 'none' };
 const btnPrimary: CSSProperties = { padding: '0.5rem 1.125rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 };

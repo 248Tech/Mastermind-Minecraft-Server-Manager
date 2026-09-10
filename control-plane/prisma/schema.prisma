@@ -304,7 +304,6 @@ model Player {
   online                  Boolean   @default(false)
   currentSessionStartedAt DateTime? @map("current_session_started_at")
   lifetimeSeconds         Int       @default(0) @map("lifetime_seconds")
-  playerKills             Int       @default(0) @map("player_kills")
   deaths                  Int       @default(0)
   level                   Int       @default(1)
   lastPosX                Float?    @map("last_pos_x")

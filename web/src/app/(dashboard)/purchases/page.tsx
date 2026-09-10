@@ -14,7 +14,7 @@ function when(iso: string | null) {
   return new Date(iso).toLocaleString();
 }
 
-type DonationLine = { id: string; shopItemId: string | null; itemName: string; amountCents: number; quantity: number; grantStatus?: string; grantError?: string | null; grantItems?: { name: string; quantity: number; quality?: number | null; status?: string }[] };
+type DonationLine = { id: string; shopItemId: string | null; itemName: string; amountCents: number; quantity: number; grantStatus?: string; grantError?: string | null; grantItems?: { name: string; quantity: number; status?: string }[] };
 type DonationRecord = {
   id: string;
   playerName: string;

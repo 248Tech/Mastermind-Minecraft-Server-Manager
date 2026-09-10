@@ -291,19 +291,18 @@ function parseShopGrantFields(
     grantItems = parseGrantItemList(input.grantItems);
   } else if (input.grantItemName != null) {
     grantItems = parseGrantItemList(String(input.grantItemName).trim()
-      ? [{ name: input.grantItemName, quantity: input.grantQuantity, quality: null }]
+      ? [{ name: input.grantItemName, quantity: input.grantQuantity }]
       : []);
   } else {
     grantItems = parseGrantItemList(existing?.grantItems) === false
-      ? parseGrantItemList(existing?.grantItemName ? [{ name: existing.grantItemName, quantity: existing.grantQuantity, quality: null }] : [])
+      ? parseGrantItemList(existing?.grantItemName ? [{ name: existing.grantItemName, quantity: existing.grantQuantity }] : [])
       : parseGrantItemList(existing?.grantItems);
     if ((grantItems === false || grantItems.length === 0) && existing?.grantItemName) {
-      grantItems = parseGrantItemList([{ name: existing.grantItemName, quantity: existing.grantQuantity, quality: null }]);
+      grantItems = parseGrantItemList([{ name: existing.grantItemName, quantity: existing.grantQuantity }]);
     }
   }
   if (grantItems === false) throw new ConflictException('Each grant must be a Minecraft item id (e.g. diamond or minecraft:diamond), quantity 1–9999. Maximum 8 items.');
-  // Strip legacy 7DTD fields — Minecraft grants are RCON give name+qty only.
-  const cleaned = grantItems.map((item) => ({ name: item.name, quantity: item.quantity, quality: null as number | null }));
+  const cleaned = grantItems.map((item) => ({ name: item.name, quantity: item.quantity }));
   const first = cleaned[0] ?? null;
   return {
     grantItems: cleaned as Prisma.InputJsonValue,
@@ -345,6 +344,6 @@ function toView(item: {
 function viewGrantItems(item: { grantItems?: unknown; grantItemName?: string | null; grantQuantity?: number }): GrantItemSpec[] {
   const parsed = parseGrantItemList(item.grantItems);
   if (parsed !== false && parsed.length) return parsed;
-  const fallback = parseGrantItemList(item.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity, quality: null }] : []);
+  const fallback = parseGrantItemList(item.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity }] : []);
   return fallback === false ? [] : fallback;
 }

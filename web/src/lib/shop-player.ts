@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-export type ShopGrantItem = { name: string; quantity: number; quality?: number | null };
+export type ShopGrantItem = { name: string; quantity: number };
 export type ShopItem = {
   id: string;
   name: string;
@@ -75,14 +75,12 @@ export function shopGrantItems(item: Pick<ShopItem, 'grantItems' | 'grantItemNam
       .map((row) => ({
         name: row.name.trim(),
         quantity: Number.isInteger(row.quantity) && row.quantity > 0 ? row.quantity : 1,
-        quality: row.quality ?? null,
       }));
   }
   if (item.grantItemName?.trim()) {
     return [{
       name: item.grantItemName.trim(),
       quantity: Number.isInteger(item.grantQuantity) && (item.grantQuantity as number) > 0 ? (item.grantQuantity as number) : 1,
-      quality: null,
     }];
   }
   return [];

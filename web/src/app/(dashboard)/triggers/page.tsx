@@ -184,7 +184,7 @@ export default function TriggersPage() {
         eventType: form.eventType,
         eventConfig: { level: Number(form.level), comparison: form.comparison },
         actionType: form.actionType,
-        actionConfig: { items: form.grants.filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity, quality: null })), notifyPlayer: form.notifyPlayer, message: form.message },
+        actionConfig: { items: form.grants.filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity })), notifyPlayer: form.notifyPlayer, message: form.message },
         applyToExisting: form.applyToExisting,
       });
       setShowCreate(false);

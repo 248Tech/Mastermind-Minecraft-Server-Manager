@@ -7,7 +7,6 @@ export const GRANT_ITEM_NAME = /^[A-Za-z][A-Za-z0-9_.:-]{0,79}$/;
 export type GrantItemSpec = {
   name: string;
   quantity: number;
-  quality: number | null; // unused for Minecraft; kept for schema compatibility
 };
 
 export type LineGrantItem = GrantItemSpec & {
@@ -34,14 +33,6 @@ export function parseGrantQuantity(raw: unknown, fallback = 1): number | null {
   return value;
 }
 
-/** Quality is ignored for Minecraft; accept null/empty and reject non-empty invalid values for API compat. */
-export function parseGrantQuality(raw: unknown): number | null | false {
-  if (raw == null || raw === '') return null;
-  const value = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw.trim()) : NaN;
-  if (!Number.isInteger(value) || value < 1 || value > 6) return false;
-  return value;
-}
-
 /** Prefer in-game name for RCON give; fall back to bare UUID. */
 export function grantPlayerTarget(playerName: string | null | undefined, uuid?: string | null): string | null {
   const name = String(playerName || '').trim();
@@ -62,7 +53,6 @@ export function buildGiveCommand(
   playerName: string | null | undefined,
   itemName: string | null | undefined,
   amount: number | null | undefined,
-  _quality?: number | null,
   uuid?: string | null,
 ): string | null {
   const target = grantPlayerTarget(playerName, uuid);
@@ -77,11 +67,10 @@ export function buildGivePlusCommand(
   steamIdOrName: string | null | undefined,
   itemName: string | null | undefined,
   amount: number | null | undefined,
-  quality?: number | null,
 ): string | null {
   // Treat input as player name first (Minecraft), else legacy steam digits as name fallback.
   const asName = String(steamIdOrName || '').replace(/^Steam_/i, '').trim();
-  return buildGiveCommand(asName, itemName, amount, quality);
+  return buildGiveCommand(asName, itemName, amount);
 }
 
 export function parseGrantItemList(raw: unknown): GrantItemSpec[] | false {
@@ -102,9 +91,9 @@ export function parseGrantItemList(raw: unknown): GrantItemSpec[] | false {
     if (nameRaw == null || String(nameRaw).trim() === '') continue;
     const name = parseGrantItemName(nameRaw);
     const quantity = parseGrantQuantity(record.quantity ?? record.grantQuantity, 1);
-    const quality = parseGrantQuality(record.quality ?? record.grantQuality);
-    if (!name || quantity == null || quality === false) return false;
-    items.push({ name, quantity, quality });
+    // Legacy quality / grantQuality keys are ignored (not validated, not stored).
+    if (!name || quantity == null) return false;
+    items.push({ name, quantity });
   }
   return items;
 }
@@ -112,7 +101,7 @@ export function parseGrantItemList(raw: unknown): GrantItemSpec[] | false {
 export function grantSpecsFromFields(
   itemName: unknown,
   quantity: unknown,
-  quality: unknown,
+  _quality: unknown,
   grantItems?: unknown,
 ): GrantItemSpec[] | false {
   if (grantItems != null && grantItems !== '') {
@@ -121,16 +110,14 @@ export function grantSpecsFromFields(
   const name = parseGrantItemName(itemName);
   if (!name) return [];
   const count = parseGrantQuantity(quantity, 1);
-  const grade = parseGrantQuality(quality);
-  if (count == null || grade === false) return false;
-  return [{ name, quantity: count, quality: grade }];
+  if (count == null) return false;
+  return [{ name, quantity: count }];
 }
 
 export function snapshotLineGrants(items: GrantItemSpec[]): LineGrantItem[] {
   return items.map((item) => ({
     name: item.name,
     quantity: item.quantity,
-    quality: item.quality,
     status: 'pending',
     attempts: 0,
     error: null,
@@ -149,13 +136,11 @@ export function lineGrantItems(raw: unknown, fallback?: { grantItemName?: string
       const record = row as Record<string, unknown>;
       const name = parseGrantItemName(record.name ?? record.itemName ?? record.grantItemName);
       const quantity = parseGrantQuantity(record.quantity ?? record.grantQuantity, 1);
-      const quality = parseGrantQuality(record.quality ?? record.grantQuality);
-      if (!name || quantity == null || quality === false) continue;
+      if (!name || quantity == null) continue;
       const attempts = Number(record.attempts);
       items.push({
         name,
         quantity,
-        quality,
         status: typeof record.status === 'string' && record.status ? record.status : 'pending',
         attempts: Number.isInteger(attempts) && attempts >= 0 ? Math.min(attempts, 99) : 0,
         error: typeof record.error === 'string' ? record.error.slice(0, 180) : null,
