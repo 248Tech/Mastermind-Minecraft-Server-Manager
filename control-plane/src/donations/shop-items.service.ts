@@ -17,7 +17,7 @@ import {
   type ShopImageSize,
 } from './donations.shop';
 import { catalogFromAgentResult, ITEM_CATALOG_CACHE_MS, type ItemCatalogView } from './item-catalog';
-import { parseChatColor, parseGrantItemList, type GrantItemSpec } from './shop-grants';
+import { parseGrantItemList, type GrantItemSpec } from './shop-grants';
 import { buildShopThumbFromMaster, normalizeShopImage } from './shop-image-process';
 
 export type ShopItemView = {
@@ -285,13 +285,6 @@ async function requireProcessedImage(file?: { buffer?: Buffer }) {
   return normalizeShopImage(file.buffer);
 }
 
-function parseBonusLandClaims(raw: unknown, fallback = 0): number {
-  if (raw == null || raw === '') return fallback;
-  const value = typeof raw === 'number' ? raw : Number(String(raw).trim());
-  if (!Number.isInteger(value) || value < 0 || value > 50) throw new ConflictException('Extra land claims must be a whole number from 0 to 50');
-  return value;
-}
-
 function parseShopGrantFields(
   input: { grantItemName?: unknown; grantQuantity?: unknown; grantQuality?: unknown; grantItems?: unknown; chatColor?: unknown; bonusLandClaims?: unknown },
   existing?: { grantItemName: string | null; grantQuantity: number; grantQuality: number | null; grantItems?: unknown; chatColor: string | null; bonusLandClaims?: number },
@@ -312,20 +305,16 @@ function parseShopGrantFields(
     }
   }
   if (grantItems === false) throw new ConflictException('Each grant must be a Minecraft item id (e.g. diamond or minecraft:diamond), quantity 1–9999. Maximum 8 items.');
-  const first = grantItems[0] ?? null;
-  const chatColor = input.chatColor == null
-    ? existing?.chatColor ?? null
-    : String(input.chatColor).trim()
-      ? parseChatColor(input.chatColor)
-      : null;
-  if (chatColor === false) throw new ConflictException('Chat color must be 6 hex characters such as FF00FF');
+  // Strip legacy 7DTD fields — Minecraft grants are RCON give name+qty only.
+  const cleaned = grantItems.map((item) => ({ name: item.name, quantity: item.quantity, quality: null as number | null }));
+  const first = cleaned[0] ?? null;
   return {
-    grantItems: grantItems as Prisma.InputJsonValue,
+    grantItems: cleaned as Prisma.InputJsonValue,
     grantItemName: first?.name ?? null,
     grantQuantity: first?.quantity ?? 1,
-    grantQuality: first?.quality ?? null,
-    chatColor,
-    bonusLandClaims: parseBonusLandClaims(input.bonusLandClaims, existing?.bonusLandClaims ?? 0),
+    grantQuality: null,
+    chatColor: null,
+    bonusLandClaims: 0,
   };
 }
 

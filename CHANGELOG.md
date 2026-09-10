@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0] - 2026-09-10
+
+### Added
+
+- `scripts/install-agent-service.ps1` — Windows Scheduled Task to start the host agent at boot/logon.
+
+### Changed
+
+- Donator shop admin UI is Minecraft-native: RCON `give` gifts only (no quality, chat color, or land-claim fields).
+- Shop item saves clear legacy chat-color / land-claim columns; donation grant delivery skips chat-color jobs.
+
 ## [0.6.0] - 2026-09-10
 
 ### Added

@@ -91,8 +91,7 @@ export function shopGrantItems(item: Pick<ShopItem, 'grantItems' | 'grantItemNam
 }
 
 export function formatShopGrantLabel(grant: ShopGrantItem) {
-  const quality = grant.quality ? ` · Q${grant.quality}` : '';
-  return `${grant.quantity}× ${grant.name}${quality}`;
+  return `${grant.quantity}× ${grant.name}`;
 }
 
 export function shopTeaser(text: string, max = 110) {

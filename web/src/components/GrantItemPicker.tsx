@@ -41,9 +41,8 @@ export function GrantList({
             onRefresh={onRefresh}
             showReload={index === 0}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
             <div><label style={labelStyle}>Quantity</label><input type="number" min="1" max="9999" step="1" value={row.quantity} onChange={(e) => update(index, { quantity: Number(e.target.value) || 1 })} style={inputStyle} /></div>
-            <div><label style={labelStyle}>Quality 1–6</label><input type="number" min="1" max="6" step="1" value={row.quality ?? ''} onChange={(e) => update(index, { quality: e.target.value === '' ? null : Number(e.target.value) })} style={inputStyle} /></div>
             <button type="button" onClick={() => onChange(rows.filter((_, rowIndex) => rowIndex !== index))} style={{ ...btnPrimary, background: '#334155' }}>Remove</button>
           </div>
         </div>
@@ -163,7 +162,7 @@ function GrantItemPicker({
             maxLength={80}
             autoComplete="off"
             spellCheck={false}
-            placeholder={loading ? 'Loading item directory…' : catalog.length ? 'Click for A–Z list, or type to filter' : 'resourceWood'}
+            placeholder={loading ? 'Loading item directory…' : catalog.length ? 'Click for A–Z list, or type to filter' : 'minecraft:diamond'}
             aria-autocomplete="list"
             aria-expanded={open}
             style={{ ...inputStyle, paddingRight: 40 }}

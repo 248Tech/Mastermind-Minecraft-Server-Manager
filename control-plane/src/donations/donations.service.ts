@@ -13,10 +13,9 @@ import {
 import { constructStripeEventWithSecrets, createCheckoutSession } from './donations.stripe';
 import { stripeCredentialsForOrg, stripeWebhookSecrets } from './donations.credentials';
 import { parseShopItemId, parseShopItemIds } from './donations.shop';
-import { parseChatColor, parseGrantItemList, snapshotLineGrants, aggregateGrantStatus } from './shop-grants';
+import { parseGrantItemList, snapshotLineGrants, aggregateGrantStatus } from './shop-grants';
 import { JobsService } from '../jobs/jobs.service';
 import { TriggersService } from '../triggers/triggers.service';
-import { inferBonusLandClaims } from '../triggers/donated-claims';
 
 @Injectable()
 export class DonationsService {
@@ -264,21 +263,19 @@ export class DonationsService {
           : (parseGrantItemList(item?.grantItemName ? [{ name: item.grantItemName, quantity: item.grantQuantity, quality: item.grantQuality }] : []) || []),
       );
       const first = grantItems[0];
-      const chatColor = parseChatColor(item?.chatColor);
-      const bonusLandClaims = inferBonusLandClaims(item?.name ?? '', grantItems, item?.bonusLandClaims ?? 0, 1);
       return {
         shopItemId: item?.id ?? null,
         itemName: item?.name ?? 'Shop item',
         amountCents,
         quantity: 1,
-        grantItems: grantItems as Prisma.InputJsonValue,
+        grantItems: grantItems.map((g) => ({ ...g, quality: null })) as Prisma.InputJsonValue,
         grantItemName: first?.name ?? null,
         grantQuantity: first ? first.quantity : null,
-        grantQuality: first?.quality ?? null,
-        chatColor: chatColor || null,
-        bonusLandClaims,
+        grantQuality: null,
+        chatColor: null,
+        bonusLandClaims: 0,
         grantStatus: aggregateGrantStatus(grantItems),
-        chatColorStatus: chatColor ? 'pending' : 'none',
+        chatColorStatus: 'none',
       };
     }).filter((line) => line.amountCents > 0);
   }

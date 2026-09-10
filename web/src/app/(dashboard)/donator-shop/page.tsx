@@ -33,8 +33,6 @@ export default function DonatorShopPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('10.00');
   const [grants, setGrants] = useState<GrantDraft[]>([]);
-  const [chatColor, setChatColor] = useState('');
-  const [extraClaims, setExtraClaims] = useState('0');
   const [image, setImage] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -141,11 +139,9 @@ export default function DonatorShopPage() {
     try {
       await api.upload(`/api/orgs/${orgId}/shop-items`, formData({
         name, description, price, active: 'true',
-        grantItems: JSON.stringify(grants.filter((row) => row.name.trim())),
-        chatColor,
-        bonusLandClaims: extraClaims,
+        grantItems: JSON.stringify(grants.filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity, quality: null }))),
       }, image));
-      setName(''); setDescription(''); setPrice('10.00'); setGrants([]); setChatColor(''); setExtraClaims('0'); setImage(null);
+      setName(''); setDescription(''); setPrice('10.00'); setGrants([]); setImage(null);
       setMessage('Shop item created.');
       await load();
     } catch (e) {
@@ -164,9 +160,9 @@ export default function DonatorShopPage() {
         description: item.description,
         price: (item.priceCents / 100).toFixed(2),
         active: String(item.active),
-        grantItems: JSON.stringify((item.grantItems || grantsFromItem(item)).filter((row) => row.name.trim())),
-        chatColor: item.chatColor || '',
-        bonusLandClaims: String(item.bonusLandClaims ?? 0),
+        grantItems: JSON.stringify((item.grantItems || grantsFromItem(item)).filter((row) => row.name.trim()).map((row) => ({ name: row.name, quantity: row.quantity, quality: null }))),
+        chatColor: '',
+        bonusLandClaims: '0',
       }, editImage), 'PATCH');
       setEditing(null); setEditImage(null);
       setMessage('Shop item updated.');
@@ -211,10 +207,8 @@ export default function DonatorShopPage() {
             <label style={labelStyle}>In-Game Gifts (optional thank-you items via RCON give, e.g. minecraft:diamond)</label>
             <GrantList value={grants} onChange={setGrants} catalog={catalog} loading={catalogBusy} sourceLabel={catalogSource} onRefresh={() => void loadCatalog(true)} />
           </div>
-          <div><label style={labelStyle}>Donor chat color (optional — unused on vanilla Minecraft)</label><input value={chatColor} onChange={(e) => setChatColor(e.target.value)} maxLength={7} placeholder="FF00FF" style={inputStyle} /></div>
-          <div><label style={labelStyle}>Extra bonus notes (legacy land-claim field — unused on Minecraft)</label><input type="number" min={0} max={50} value={extraClaims} onChange={(e) => setExtraClaims(e.target.value)} style={inputStyle} /></div>
           <div><label style={labelStyle}>Picture (JPEG, PNG, or WebP, 2 MB max). Resized automatically for the shop (full quality, WebP).</label><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setImage(e.target.files?.[0] || null)} required /></div>
-          <button disabled={busy || !name.trim() || !image} style={btnPrimary}>{busy ? 'Savingâ€¦' : 'Add item'}</button>
+          <button disabled={busy || !name.trim() || !image} style={btnPrimary}>{busy ? 'Saving…' : 'Add item'}</button>
         </form>
       </div>
 
@@ -252,9 +246,6 @@ export default function DonatorShopPage() {
                       sourceLabel={catalogSource}
                       onRefresh={() => void loadCatalog(true)}
                     />
-                    <input value={item.chatColor || ''} onChange={(e) => setItems((rows) => rows.map((row) => row.id === item.id ? { ...row, chatColor: e.target.value } : row))} placeholder="FF00FF" style={inputStyle} />
-                    <label style={labelStyle}>Extra land claims</label>
-                    <input type="number" min={0} max={50} value={item.bonusLandClaims ?? 0} onChange={(e) => setItems((rows) => rows.map((row) => row.id === item.id ? { ...row, bonusLandClaims: Number(e.target.value) || 0 } : row))} style={inputStyle} />
                     <label style={{ color: '#94a3b8', fontSize: 13 }}><input type="checkbox" checked={item.active} onChange={(e) => setItems((rows) => rows.map((row) => row.id === item.id ? { ...row, active: e.target.checked } : row))} /> Active in player shop</label>
                     <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setEditImage(e.target.files?.[0] || null)} />
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -266,12 +257,10 @@ export default function DonatorShopPage() {
                   <>
                     <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem', color: '#f1f5f9' }}>{item.name}</h2>
                     {item.description ? <ShopDescription text={item.description} muted /> : <p style={{ margin: '0 0 8px', color: '#64748b', fontSize: 13 }}>No description</p>}
-                    <p style={{ margin: 0, color: '#c4b5fd' }}>{money(item.priceCents)} Â· {item.active ? 'Active' : 'Hidden'}</p>
-                    {(grantsFromItem(item).length > 0 || item.chatColor || item.bonusLandClaims) && (
+                    <p style={{ margin: 0, color: '#c4b5fd' }}>{money(item.priceCents)} · {item.active ? 'Active' : 'Hidden'}</p>
+                    {grantsFromItem(item).length > 0 && (
                       <p style={{ margin: '6px 0 0', color: '#94a3b8', fontSize: 13 }}>
-                        {grantsFromItem(item).length ? `In-Game Gifts: ${grantsFromItem(item).map((row) => `${row.quantity}Ã— ${row.name}${row.quality ? ` Q${row.quality}` : ''}`).join(', ')}` : 'No In-Game Gifts'}
-                        {item.chatColor ? ` Â· chat #${item.chatColor}` : ''}
-                        {item.bonusLandClaims ? ` Â· +${item.bonusLandClaims} land claims` : ''}
+                        In-Game Gifts: {grantsFromItem(item).map((row) => `${row.quantity}× ${row.name}`).join(', ')}
                       </p>
                     )}
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>

@@ -28,7 +28,6 @@ import { decryptIntegrationSecret } from '../orgs/integration-crypto';
 import {
   MAX_GRANT_ATTEMPTS,
   aggregateGrantStatus,
-  buildChatColorCommand,
   buildGiveCommand,
   classifyGrantOutput,
   lineGrantItems,
@@ -663,18 +662,13 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     for (const line of lines) {
       if (queued >= limit) break;
       const stale = !line.grantQueuedAt || line.grantQueuedAt < staleBefore;
-      // Chat color has no vanilla Minecraft equivalent — mark delivered/skip.
-      const colorDue = line.chatColorStatus === 'pending' || (line.chatColorStatus === 'queued' && stale);
-      if (colorDue && line.chatColor && line.grantAttempts < MAX_GRANT_ATTEMPTS) {
-        const command = buildChatColorCommand(playerName, line.chatColor);
-        if (command && await this.queueShopGrantJob(orgId, member.userId, serverInstanceId, line.id, 'chat_color', command, { chatColorStatus: 'queued' })) {
-          queued += 1;
-        } else if (!command) {
-          await this.prisma.donationLine.update({
-            where: { id: line.id },
-            data: { chatColorStatus: 'delivered' },
-          });
-        }
+      // Chat color has no vanilla Minecraft equivalent — clear pending rows.
+      const colorDue = line.chatColorStatus === 'pending' || line.chatColorStatus === 'queued';
+      if (colorDue) {
+        await this.prisma.donationLine.update({
+          where: { id: line.id },
+          data: { chatColorStatus: 'delivered', chatColor: null },
+        });
       }
       if (!online) continue;
       const grants = lineGrantItems(line.grantItems, line);

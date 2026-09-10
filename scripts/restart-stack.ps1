@@ -48,8 +48,14 @@ if (-not $SkipInfra) {
 Write-Step "Starting control-plane and web"
 $cpLog = Join-Path $Root "cp.log"
 $webLog = Join-Path $Root "web.log"
-$cpCmd = "pnpm dev >> `"$cpLog`" 2>&1"
-$webCmd = "set NEXT_PUBLIC_CONTROL_PLANE_URL=http://localhost:3001&& pnpm dev >> `"$webLog`" 2>&1"
+# Rotate previous logs so a locked handle from a killed process cannot block startup.
+foreach ($log in @($cpLog, $webLog)) {
+    if (Test-Path $log) {
+        Move-Item $log "$log.prev" -Force -ErrorAction SilentlyContinue
+    }
+}
+$cpCmd = "pnpm dev > `"$cpLog`" 2>&1"
+$webCmd = "set NEXT_PUBLIC_CONTROL_PLANE_URL=http://localhost:3001&& pnpm dev > `"$webLog`" 2>&1"
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $cpCmd -WorkingDirectory (Join-Path $Root "control-plane") -WindowStyle Hidden
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $webCmd -WorkingDirectory (Join-Path $Root "web") -WindowStyle Hidden
 

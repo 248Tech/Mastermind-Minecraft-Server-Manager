@@ -49,6 +49,9 @@ Copy-Item agent\.env.agent.example agent\.env.agent
 # MASTERMIND_MC_INSTALL_PATH=C:/path/to/minecraft-server
 # MASTERMIND_PAIRING_TOKEN=...
 .\scripts\run-agent.ps1
+
+# Optional: start at Windows boot via Scheduled Task
+.\scripts\install-agent-service.ps1
 ```
 
 Defaults bind to `127.0.0.1` — put a reverse proxy (Caddy/nginx/Traefik) or Cloudflare tunnel in front for public HTTPS.
