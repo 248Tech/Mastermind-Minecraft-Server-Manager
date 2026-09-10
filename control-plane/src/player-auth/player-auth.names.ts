@@ -4,9 +4,9 @@ export const MAX_PORTAL_PASSWORD = 128;
 
 export function parsePortalPlayerName(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
-  const name = raw.trim().replace(/\s+/g, ' ');
-  if (name.length < 1 || name.length > MAX_PORTAL_PLAYER_NAME) return null;
-  if (/[\u0000-\u001f\u007f]/.test(name)) return null;
+  const name = raw.trim();
+  // Minecraft Java names: 1–16 chars, letters/digits/underscore
+  if (!/^[A-Za-z0-9_]{1,16}$/.test(name)) return null;
   return name;
 }
 

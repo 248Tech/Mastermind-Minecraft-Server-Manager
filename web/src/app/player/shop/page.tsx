@@ -144,7 +144,7 @@ function PlayerShopContent() {
             ? `Signed in as ${profile.name}. Gifts apply to that in-game name.`
             : signedIn && steamLast4
               ? `Gifts are tied to Steam ending ${steamLast4}.`
-              : 'Browse freely. Sign in through Steam or with your in-game name to donate.'}
+              : 'Browse freely. Sign in with your Minecraft name to donate.'}
           {` · ${serverReachable ? 'Server online' : 'Server status unknown'} · ${playersOnline} player${playersOnline === 1 ? '' : 's'}`}
           {count > 0 && <> · <a href="/player/shop/cart" style={{ color: '#fb923c' }}>View cart ({count})</a></>}
         </p>

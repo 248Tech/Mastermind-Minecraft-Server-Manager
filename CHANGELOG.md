@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1] - 2026-09-10
+
+### Changed
+
+- **Players** dashboard is Minecraft-native: name/UUID roster, kick/ban/op/deop by name, ops.json operators; removed Steam/EOS/zombie kills/inventory/set-deaths.
+- **Player portal** prefers Minecraft name sign-in/register; Steam is optional. Name sessions can donate (RCON `give` gifts).
+- Donator shop copy uses RCON `give` instead of 7DTD `giveplus`.
+
 ## [0.2.0] - 2026-09-10
 
 ### Removed

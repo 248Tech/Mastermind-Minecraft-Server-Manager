@@ -196,7 +196,7 @@ export default function DonatorShopPage() {
     <div>
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#f1f5f9' }}>Donator Shop</h1>
-        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Create supporter packages for the player portal. Donations may include optional In-Game Gifts (thank-you `giveplus` items and donor chat color) â€” not a sale of in-game items. Pictures are shown in full (not cropped). Descriptions support **bold** and * bullet lines.</p>
+        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>Create supporter packages for the player portal. Donations may include optional In-Game Gifts (thank-you RCON <code>give</code> items) — not a sale of in-game items. Pictures are shown in full (not cropped). Descriptions support **bold** and * bullet lines.</p>
       </div>
       {error && <p style={{ color: '#f87171', fontSize: '.875rem' }}>{error}</p>}
       {message && <p style={{ color: '#4ade80', fontSize: '.875rem' }}>{message}</p>}
@@ -208,11 +208,11 @@ export default function DonatorShopPage() {
           <div><label style={labelStyle}>Description (**bold** and * bullets)</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} rows={6} style={{ ...inputStyle, resize: 'vertical' }} /></div>
           <div><label style={labelStyle}>Price (USD)</label><input type="number" min="1" max="500" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required style={inputStyle} /></div>
           <div>
-            <label style={labelStyle}>In-Game Gifts (optional thank-you giveplus from items/blocks)</label>
+            <label style={labelStyle}>In-Game Gifts (optional thank-you items via RCON give, e.g. minecraft:diamond)</label>
             <GrantList value={grants} onChange={setGrants} catalog={catalog} loading={catalogBusy} sourceLabel={catalogSource} onRefresh={() => void loadCatalog(true)} />
           </div>
-          <div><label style={labelStyle}>Donor chat color (optional hex, e.g. FF00FF)</label><input value={chatColor} onChange={(e) => setChatColor(e.target.value)} maxLength={7} placeholder="FF00FF" style={inputStyle} /></div>
-          <div><label style={labelStyle}>Extra land claims (added on top of level-reward triggers)</label><input type="number" min={0} max={50} value={extraClaims} onChange={(e) => setExtraClaims(e.target.value)} style={inputStyle} /></div>
+          <div><label style={labelStyle}>Donor chat color (optional — unused on vanilla Minecraft)</label><input value={chatColor} onChange={(e) => setChatColor(e.target.value)} maxLength={7} placeholder="FF00FF" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Extra bonus notes (legacy land-claim field — unused on Minecraft)</label><input type="number" min={0} max={50} value={extraClaims} onChange={(e) => setExtraClaims(e.target.value)} style={inputStyle} /></div>
           <div><label style={labelStyle}>Picture (JPEG, PNG, or WebP, 2 MB max). Resized automatically for the shop (full quality, WebP).</label><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setImage(e.target.files?.[0] || null)} required /></div>
           <button disabled={busy || !name.trim() || !image} style={btnPrimary}>{busy ? 'Savingâ€¦' : 'Add item'}</button>
         </form>

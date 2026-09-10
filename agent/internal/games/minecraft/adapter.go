@@ -114,7 +114,7 @@ func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, 
 		}
 		return agent.JobResult{Status: "success", Result: map[string]interface{}{"players": players, "raw": raw}}, nil
 	case "PLAYER_KICK":
-		name := getString(job.Payload, "player", getString(job.Payload, "player_id", getString(job.Payload, "name", "")))
+		name := getString(job.Payload, "player", getString(job.Payload, "player_id", getString(job.Payload, "name", getString(job.Payload, "identifier", ""))))
 		reason := getString(job.Payload, "reason", "")
 		if name == "" {
 			return agent.JobResult{Status: "failed", Error: "player name required"}, nil
@@ -135,14 +135,14 @@ func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, 
 		}
 		return agent.JobResult{Status: "success", Output: out}, nil
 	case "PLAYER_BAN":
-		name := getString(job.Payload, "player", getString(job.Payload, "player_id", getString(job.Payload, "name", "")))
+		name := getString(job.Payload, "player", getString(job.Payload, "player_id", getString(job.Payload, "name", getString(job.Payload, "identifier", ""))))
 		reason := getString(job.Payload, "reason", "")
 		if name == "" {
 			return agent.JobResult{Status: "failed", Error: "player name required"}, nil
 		}
 		return resultOrErr(a.BanPlayer(ctx, cfg, name, reason))
 	case "PLAYER_ADMIN_PROMOTE":
-		name := getString(job.Payload, "player", getString(job.Payload, "name", ""))
+		name := getString(job.Payload, "player", getString(job.Payload, "name", getString(job.Payload, "identifier", "")))
 		if name == "" {
 			return agent.JobResult{Status: "failed", Error: "player name required"}, nil
 		}
@@ -152,7 +152,7 @@ func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, 
 		}
 		return agent.JobResult{Status: "success", Output: out}, nil
 	case "PLAYER_ADMIN_DEMOTE":
-		name := getString(job.Payload, "player", getString(job.Payload, "name", ""))
+		name := getString(job.Payload, "player", getString(job.Payload, "name", getString(job.Payload, "identifier", "")))
 		if name == "" {
 			return agent.JobResult{Status: "failed", Error: "player name required"}, nil
 		}
@@ -161,6 +161,18 @@ func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, 
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
 		return agent.JobResult{Status: "success", Output: out}, nil
+	case "PLAYER_ADMIN_LIST":
+		admins, err := a.ListAdmins(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"admins": admins}}, nil
+	case "TRIGGER_GRANT_ITEMS":
+		result, err := a.GrantItems(ctx, cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
 	case "SERVER_CONFIG_READ":
 		content, path, err := a.readServerProperties(cfg, job.Payload)
 		if err != nil {
@@ -214,18 +226,6 @@ func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, 
 		return a.SetMaintenance(ctx, cfg, job.Payload)
 	case "SERVER_UPDATE":
 		return a.Update(ctx, cfg, job.Payload)
-	case "PLAYER_ADMIN_LIST":
-		admins, err := a.ListAdmins(cfg, job.Payload)
-		if err != nil {
-			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
-		}
-		return agent.JobResult{Status: "success", Result: map[string]interface{}{"admins": admins}}, nil
-	case "TRIGGER_GRANT_ITEMS":
-		result, err := a.GrantItems(ctx, cfg, job.Payload)
-		if err != nil {
-			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
-		}
-		return agent.JobResult{Status: "success", Result: result}, nil
 	case "MOD_LIST":
 		mods, err := a.ListMods(cfg)
 		if err != nil {

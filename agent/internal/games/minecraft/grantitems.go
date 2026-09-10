@@ -111,11 +111,18 @@ func (a *Adapter) ListAdmins(cfg *agent.InstanceConfig, payload map[string]inter
 	}
 	out := make([]map[string]interface{}, 0, len(entries))
 	for _, e := range entries {
+		userId := e.UUID
+		if userId == "" {
+			userId = e.Name
+		}
 		out = append(out, map[string]interface{}{
 			"uuid":                e.UUID,
 			"name":                e.Name,
 			"level":               e.Level,
+			"userId":              userId,
+			"permissionLevel":     e.Level,
 			"bypassesPlayerLimit": e.BypassesPlayerLimit,
+			"platform":            "minecraft",
 		})
 	}
 	return out, nil

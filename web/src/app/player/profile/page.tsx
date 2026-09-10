@@ -103,7 +103,7 @@ function PlayerProfileContent() {
     fetch('/api/player-auth/me', { cache: 'no-store' })
       .then(async (response) => {
         if (response.status === 401) {
-          setError('Sign in through Steam to view your individual profile.');
+          setError('Sign in with your Minecraft name to view your profile.');
           return;
         }
         if (!response.ok) throw new Error('Could not load your profile');
@@ -124,34 +124,24 @@ function PlayerProfileContent() {
   if (error || !profile) {
     return (
       <PortalFrame profile={null}>
-        <p className="pp-flash pp-flash-bad">{error || 'Sign in through Steam to view your profile.'}</p>
-        <a className="pp-btn pp-btn-primary" href="/api/player-auth/steam/start?next=/player/profile">Sign in through Steam</a>
-      </PortalFrame>
-    );
-  }
-  if (profile.auth === 'name' || !profile.stats) {
-    return (
-      <PortalFrame profile={profile}>
-        <p className="pp-flash pp-flash-bad">Shop accounts can donate, but stats, inventory, logout location, and land are Steam-only.</p>
-        <a className="pp-btn pp-btn-primary" href="/api/player-auth/steam/start?next=/player/profile">Sign in through Steam</a>
+        <p className="pp-flash pp-flash-bad">{error || 'Sign in with your Minecraft name to view your profile.'}</p>
+        <a className="pp-btn pp-btn-primary" href="/player">Back to portal sign-in</a>
       </PortalFrame>
     );
   }
 
-  const stats = profile.stats;
+  const stats = profile.stats || {
+    level: 0,
+    zombieKills: 0,
+    playerKills: 0,
+    deaths: 0,
+    sessionSeconds: 0,
+    lifetimeSeconds: 0,
+    firstSeenAt: '',
+    lastSeenAt: '',
+  };
   const inventory = profile.inventory;
   const donation = profile.donation;
-  const sections: Array<[string, InventoryItem[] | undefined]> = [
-    ['Bag', inventory?.bag],
-    ['Belt', inventory?.belt],
-    ['Equipment', inventory?.equipment],
-    ['Other', inventory?.other],
-  ];
-  const selectedCents = custom.trim() ? Math.round(Number(custom) * 100) : amountCents;
-  const checkoutReady = Boolean(donation?.checkoutEnabled);
-  const kd = stats.deaths > 0 ? (stats.zombieKills / stats.deaths).toFixed(1) : String(stats.zombieKills);
-  const hasPlaces = Boolean(places && (places.claims.length || places.homes.length || places.vehicles.length || places.drones.length));
-
   async function donate() {
     setDonateError('');
     if (!Number.isInteger(selectedCents) || selectedCents < 500 || selectedCents > 50000) {
@@ -218,7 +208,7 @@ function PlayerProfileContent() {
               <span className={profile.online ? 'pp-pill pp-pill-on' : 'pp-pill pp-pill-off'}>{profile.online ? 'Online' : 'Offline'}</span>
               {donation?.supporter && <span className="pp-pill pp-pill-gold">Supporter</span>}
               <span>{profile.serverName}</span>
-              <span>Steam ···{profile.steamId.slice(-4)}</span>
+              <span>{profile.auth === 'name' ? 'Minecraft name' : profile.steamId ? `Steam ···${profile.steamId.slice(-4)}` : 'Account'}</span>
             </div>
             <div className="pp-actions">
               <a className="pp-btn pp-btn-ghost" href="/player/map">Open map</a>
@@ -229,18 +219,15 @@ function PlayerProfileContent() {
 
         <div className="pp-grid">
           <section className="pp-card">
-            <h2>Combat</h2>
-            <p className="pp-help">Live totals from the last server poll.</p>
+            <h2>Playtime</h2>
+            <p className="pp-help">Totals from roster polls and join/leave logs.</p>
             <div className="pp-stats">
-              <div className="pp-stat"><small>Level</small><strong>{stats.level}</strong></div>
-              <div className="pp-stat"><small>Zombies</small><strong>{stats.zombieKills}</strong></div>
-              <div className="pp-stat"><small>Players</small><strong>{stats.playerKills}</strong></div>
+              <div className="pp-stat"><small>Session</small><strong>{profile.online ? duration(stats.sessionSeconds) : '—'}</strong></div>
+              <div className="pp-stat"><small>Lifetime</small><strong>{duration(stats.lifetimeSeconds)}</strong></div>
               <div className="pp-stat"><small>Deaths</small><strong>{stats.deaths}</strong></div>
+              <div className="pp-stat"><small>Status</small><strong>{profile.online ? 'Online' : 'Offline'}</strong></div>
             </div>
             <div className="pp-quiet">
-              <span>K/D {kd}</span>
-              <span>Session {profile.online ? duration(stats.sessionSeconds) : '—'}</span>
-              <span>Lifetime {duration(stats.lifetimeSeconds)}</span>
               <span>First seen {when(stats.firstSeenAt)}</span>
               <span>Last seen {when(stats.lastSeenAt)}</span>
             </div>

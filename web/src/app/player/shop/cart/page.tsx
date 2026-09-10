@@ -109,7 +109,7 @@ function PlayerShopCartContent() {
             ? `Donate once for everything in your cart. In-Game Gifts stay tied to ${profile.name}.`
             : signedIn && steamLast4
               ? `Donate once for everything in your cart. In-Game Gifts stay tied to Steam ending ${steamLast4}.`
-              : 'Review your cart. Sign in through Steam or with your in-game name to donate.'}
+              : 'Review your cart. Sign in with your Minecraft name to donate.'}
         </p>
       </section>
 

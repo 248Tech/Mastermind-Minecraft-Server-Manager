@@ -189,10 +189,10 @@ export class PlayerAuthService {
       take: 3,
     });
     if (matches.length === 0) {
-      throw new ConflictException('That in-game name has not been seen on this server yet. Join the game once, or sign in through Steam.');
+      throw new ConflictException('That Minecraft name has not been seen on this server yet. Join the game once, then create an account.');
     }
     if (matches.length > 1) {
-      throw new ConflictException('That name matches more than one player. Sign in through Steam to continue.');
+      throw new ConflictException('That name matches more than one player record. Contact staff for help.');
     }
     const player = matches[0];
     if (player.portalPasswordHash) {
@@ -256,6 +256,7 @@ export class PlayerAuthService {
       },
       select: {
         id: true, orgId: true, steamId: true, eosId: true, entityId: true, name: true, online: true, serverInstanceId: true,
+        identityKey: true,
         zombieKills: true, playerKills: true, deaths: true, level: true, lifetimeSeconds: true,
         currentSessionStartedAt: true, firstSeenAt: true, lastSeenAt: true, lastLogoutAt: true,
         lastPosX: true, lastPosY: true, lastPosZ: true, lastInventory: true, lastInventoryAt: true,
@@ -279,17 +280,27 @@ export class PlayerAuthService {
     const checkoutEnabled = await stripeCheckoutEnabledForOrg(this.prisma, player.orgId);
     const steamLast4 = player.steamId ? player.steamId.slice(-4) : '';
     if (player.sessionAuth === 'name') {
+      const now = Date.now();
+      const sessionSeconds = player.online && player.currentSessionStartedAt ? Math.max(0, Math.floor((now - player.currentSessionStartedAt.getTime()) / 1000)) : 0;
+      const uuid = player.identityKey?.startsWith('uuid:') ? player.identityKey.slice(5) : null;
       return {
         playerId: player.id,
         steamId: player.steamId,
+        uuid,
         entityId: null,
         name: player.name,
-        online: false,
+        online: player.online,
         auth: 'name' as const,
         isAdmin,
         serverInstanceId: player.serverInstanceId,
         serverName: player.serverInstance.name,
         mapEmbedUrl: player.serverInstance.mapEmbedUrl ?? null,
+        stats: {
+          sessionSeconds,
+          lifetimeSeconds: player.lifetimeSeconds + sessionSeconds,
+          level: player.level,
+          deaths: player.deaths,
+        },
         donation: {
           status: player.supporter ? 'supporter' : 'ready',
           tiedTo: 'name',

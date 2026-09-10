@@ -71,19 +71,20 @@ export class DonationsService {
     shopItemId?: string,
     shopItemIds?: string[],
   ) {
-    if (!player.steamId) {
-      throw new BadRequestException('This in-game name is not tied to a Steam ID yet. Sign in through Steam to donate.');
+    if (!player.steamId && player.sessionAuth !== 'name') {
+      throw new BadRequestException('Sign in with your Minecraft name or Steam to donate.');
     }
     const credentials = await stripeCredentialsForOrg(this.prisma, player.orgId);
     if (!credentials) throw new ServiceUnavailableException('Donations are not configured');
+    const syntheticSteam = player.steamId || `mc:${player.id}`;
     const cartIds = parseShopItemIds(shopItemIds);
-    if (cartIds) return this.createCartCheckout({ ...player, steamId: player.steamId }, cartIds, credentials.secretKey);
+    if (cartIds) return this.createCartCheckout({ ...player, steamId: syntheticSteam }, cartIds, credentials.secretKey);
     const itemId = parseShopItemId(shopItemId);
     let amount = parseDonationAmountCents(amountCents);
     let productName = 'Server support';
     const tiedTo = player.sessionAuth === 'name' && player.name
-      ? `Support tied to in-game name ${player.name}`
-      : `Support tied to Steam ending ${player.steamId.slice(-4)}`;
+      ? `Support tied to Minecraft name ${player.name}`
+      : `Support tied to Steam ending ${syntheticSteam.slice(-4)}`;
     let productDescription = tiedTo;
     let returnPath = '/player/profile';
     if (itemId) {
@@ -103,7 +104,7 @@ export class DonationsService {
       return await createCheckoutSession({
         amountCents: amount,
         playerId: player.id,
-        steamId: player.steamId,
+        steamId: syntheticSteam,
         serverInstanceId: player.serverInstanceId,
         orgId: player.orgId,
         origin,
@@ -143,8 +144,8 @@ export class DonationsService {
           amountCents: item.priceCents,
           name: item.name,
           description: item.description || (player.sessionAuth === 'name' && player.name
-            ? `Support tied to in-game name ${player.name}`
-            : `Support tied to Steam ending ${player.steamId.slice(-4)}`),
+            ? `Support tied to Minecraft name ${player.name}`
+            : `Support tied to account ${player.steamId.startsWith('mc:') ? player.name || player.id : `Steam ending ${player.steamId.slice(-4)}`}`),
           shopItemId: item.id,
         })),
       });

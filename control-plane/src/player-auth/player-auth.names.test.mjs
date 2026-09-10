@@ -4,9 +4,12 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-assert(parsePortalPlayerName('  Builder One  ') === 'Builder One', 'trims player names');
+assert(parsePortalPlayerName('Steve') === 'Steve', 'accepts Minecraft names');
+assert(parsePortalPlayerName('  Steve  ') === 'Steve', 'trims Minecraft names');
+assert(parsePortalPlayerName('Builder_One') === 'Builder_One', 'allows underscores');
+assert(parsePortalPlayerName('Builder One') === null, 'rejects spaces');
 assert(parsePortalPlayerName('') === null, 'rejects empty names');
-assert(parsePortalPlayerName('x'.repeat(65)) === null, 'rejects long names');
+assert(parsePortalPlayerName('x'.repeat(17)) === null, 'rejects names over 16 chars');
 assert(parsePortalPassword('short') === null, 'rejects short passwords');
 assert(parsePortalPassword('long-enough-password') === 'long-enough-password', 'accepts passwords');
 assert(parseShopReturnPath('/player/shop/cart') === '/player/shop/cart', 'allows cart return');

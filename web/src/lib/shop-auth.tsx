@@ -38,14 +38,14 @@ export function ShopAuthGate({ next, title }: { next: string; title?: string }) 
       <p style={{ color: '#f97316', fontSize: 11, letterSpacing: '.14em', fontWeight: 800, margin: '0 0 6px' }}>CONTINUE TO DONATE</p>
       <h2 style={{ margin: '0 0 8px', fontSize: '1.05rem' }}>{title || 'Sign in to donate'}</h2>
       <p style={{ color: '#94a3b8', margin: '0 0 14px', fontSize: 13, lineHeight: 1.5 }}>
-        You can browse without an account. To donate (and receive any In-Game Gifts), sign in through Steam or create a shop account that matches your in-game name.
+        Browse without an account. To donate (and receive In-Game Gifts via <code>give</code>), sign in with your Minecraft name — or optionally through Steam.
       </p>
       {error && <div style={{ ...shopAlert, marginBottom: 12 }}>{error}</div>}
       {mode === 'choose' && (
         <div style={{ display: 'grid', gap: 8 }}>
-          <a href={steamShopLoginUrl(next)} style={{ ...shopPrimary, textDecoration: 'none', textAlign: 'center' }}>Sign in through Steam</a>
-          <button type="button" className="shop-card-btn" onClick={() => setMode('login')}>Sign in with in-game name</button>
-          <button type="button" className="shop-card-btn shop-card-btn-muted" onClick={() => setMode('register')}>Create account with in-game name</button>
+          <button type="button" style={{ ...shopPrimary, border: 0, cursor: 'pointer' }} onClick={() => setMode('login')}>Sign in with Minecraft name</button>
+          <button type="button" className="shop-card-btn" onClick={() => setMode('register')}>Create Minecraft name account</button>
+          <a href={steamShopLoginUrl(next)} className="shop-card-btn shop-card-btn-muted" style={{ textDecoration: 'none', textAlign: 'center' }}>Optional: Steam</a>
         </div>
       )}
       {mode !== 'choose' && (
@@ -57,8 +57,8 @@ export function ShopAuthGate({ next, title }: { next: string; title?: string }) 
           style={{ display: 'grid', gap: 10 }}
         >
           <label style={{ color: '#94a3b8', fontSize: 12 }}>
-            In-game name
-            <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" required maxLength={64} style={{ ...shopInput, marginTop: 6 }} />
+            Minecraft name
+            <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" required maxLength={16} style={{ ...shopInput, marginTop: 6 }} />
           </label>
           <label style={{ color: '#94a3b8', fontSize: 12 }}>
             Password
@@ -70,8 +70,8 @@ export function ShopAuthGate({ next, title }: { next: string; title?: string }) 
           <button type="button" className="shop-card-btn shop-card-btn-muted" onClick={() => { setMode('choose'); setError(''); }}>Back</button>
           <p style={{ color: '#64748b', fontSize: 12, margin: 0, lineHeight: 1.45 }}>
             {mode === 'register'
-              ? 'The name must already exist on this server. Play once first. This account is for donator-shop donations only — profile and live player markers still need Steam.'
-              : 'Use the password you created for this in-game name.'}
+              ? 'Join the Minecraft server once first so your name is known, then set a portal password. Gifts are delivered with RCON give when you are online.'
+              : 'Use the password you created for this Minecraft name.'}
           </p>
         </form>
       )}

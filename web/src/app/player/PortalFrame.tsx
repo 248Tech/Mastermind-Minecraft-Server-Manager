@@ -13,10 +13,6 @@ export type PortalProfile = {
   donation?: { supporter?: boolean; checkoutEnabled?: boolean };
 };
 
-function isSteamSession(profile: PortalProfile | null) {
-  return Boolean(profile?.name) && profile?.auth !== 'name';
-}
-
 export function PortalFrame({
   profile,
   children,
@@ -29,7 +25,6 @@ export function PortalFrame({
   maxWidth?: number;
 }) {
   const signedIn = Boolean(profile?.name);
-  const steam = isSteamSession(profile);
   const path = usePathname() || '';
   return (
     <main style={{ minHeight: '100vh', background: '#08080d', color: '#f1f5f9' }}>
@@ -37,14 +32,14 @@ export function PortalFrame({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src="/mastermind-logo.png" alt="" style={{ width: 38, height: 38, objectFit: 'cover', borderRadius: 8 }} />
           <div>
-            <strong>Builder Friendly Player Portal</strong>
-            <div style={{ color: '#64748b', fontSize: 11 }}>{profile?.serverName || 'Donator shop and Steam-verified access'}</div>
+            <strong>Player Portal</strong>
+            <div style={{ color: '#64748b', fontSize: 11 }}>{profile?.serverName || 'Donator shop and Minecraft name access'}</div>
           </div>
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#94a3b8', fontSize: 13 }}>
           {profile?.name && <span style={{ color: profile.online ? '#4ade80' : '#94a3b8' }}>{profile.online ? '●' : '○'} {profile.name}</span>}
           <NavLink href="/player" current={path === '/player'}>Home</NavLink>
-          {steam && <NavLink href="/player/profile" current={path.startsWith('/player/profile')}>Profile</NavLink>}
+          {signedIn && <NavLink href="/player/profile" current={path.startsWith('/player/profile')}>Profile</NavLink>}
           {profile?.isAdmin && <NavLink href="/" current={false}>Admin dashboard</NavLink>}
           <NavLink href="/player/shop" current={path.startsWith('/player/shop')}>Shop</NavLink>
           <CartNavLink current={path.startsWith('/player/shop/cart')} />
