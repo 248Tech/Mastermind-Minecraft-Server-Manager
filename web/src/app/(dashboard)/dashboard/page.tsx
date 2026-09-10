@@ -24,7 +24,6 @@ const QUICK_LINKS=[
   {id:'schedules',href:'/schedules',icon:'◷',label:'Schedules',description:'Automated jobs and restarts',color:'#818cf8'},
   {id:'alerts',href:'/alerts',icon:'◎',label:'Alerts',description:'Rules and notifications',color:'#f87171'},
   {id:'triggers',href:'/triggers',icon:'⚡',label:'Triggers',description:'Level rewards, item grants, and event actions',color:'#c4b5fd'},
-  {id:'region-healer',href:'/region-healer',icon:'✚',label:'Region Healer',description:'Inspect and repair world regions',color:'#34d399'},
 ] as const;
 const DEFAULT_QUICK=['logs','health','players','jobs'];
 

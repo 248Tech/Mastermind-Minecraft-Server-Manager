@@ -46,10 +46,11 @@ func (a *Adapter) Capabilities() []string {
 		agent.CapRestart,
 		agent.CapStatus,
 		agent.CapSendCommand,
+		agent.CapStreamChat,
 		agent.CapKickPlayer,
 		agent.CapBanPlayer,
 		agent.CapGetLogPath,
-		agent.CapInstallMod, // list / quarantine helpers for mods|plugins folders
+		agent.CapInstallMod,
 	}
 }
 
@@ -173,18 +174,118 @@ func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, 
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
 		return agent.JobResult{Status: "success", Result: map[string]interface{}{"path": path, "saved": true}}, nil
+	case "SAVE_LIST":
+		saves, err := a.ListSaves(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"saves": saves}}, nil
 	case "SAVE_BACKUP":
 		path, err := a.BackupWorld(ctx, cfg, job.Payload)
 		if err != nil {
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
 		return agent.JobResult{Status: "success", Result: map[string]interface{}{"backup": path}}, nil
+	case "SAVE_RESTORE":
+		if !getBool(job.Payload, "confirmed") {
+			return agent.JobResult{Status: "failed", Error: "save restore requires explicit confirmation"}, nil
+		}
+		result, err := a.RestoreSave(ctx, cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
+	case "SAVE_DELETE":
+		if !getBool(job.Payload, "confirmed") {
+			return agent.JobResult{Status: "failed", Error: "save deletion requires explicit confirmation"}, nil
+		}
+		id := getString(job.Payload, "save_id", getString(job.Payload, "backup", getString(job.Payload, "id", "")))
+		if err := a.DeleteSaveBackup(cfg, job.Payload); err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"deleted": id}}, nil
+	case "SAVE_RETENTION":
+		retention := getInt(job.Payload, "retention_count", 10)
+		if err := a.PruneSaveBackups(cfg, job.Payload, retention); err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"retentionCount": retention}}, nil
+	case "SERVER_MAINTENANCE":
+		return a.SetMaintenance(ctx, cfg, job.Payload)
+	case "SERVER_UPDATE":
+		return a.Update(ctx, cfg, job.Payload)
+	case "PLAYER_ADMIN_LIST":
+		admins, err := a.ListAdmins(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"admins": admins}}, nil
+	case "TRIGGER_GRANT_ITEMS":
+		result, err := a.GrantItems(ctx, cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
 	case "MOD_LIST":
 		mods, err := a.ListMods(cfg)
 		if err != nil {
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
 		return agent.JobResult{Status: "success", Result: map[string]interface{}{"mods": mods}}, nil
+	case "MOD_QUARANTINE":
+		result, err := a.QuarantineMod(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
+	case "MOD_QUARANTINE_LIST":
+		mods, err := a.ListQuarantinedMods(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"mods": mods}}, nil
+	case "MOD_RESTORE":
+		result, err := a.RestoreMod(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
+	case "MOD_DELETE":
+		result, err := a.DeleteMod(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
+	case "MOD_UPLOAD_QUARANTINE":
+		result, err := a.UploadMod(cfg, job.Payload, false)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
+	case "MOD_UPLOAD_PENDING":
+		result, err := a.UploadMod(cfg, job.Payload, true)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
+	case "MOD_PENDING_LIST":
+		mods, err := a.ListPendingMods(cfg)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"mods": mods}}, nil
+	case "MOD_PENDING_APPROVE":
+		result, err := a.ApprovePendingMod(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
+	case "MOD_PENDING_REJECT":
+		result, err := a.RejectPendingMod(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: result}, nil
 	default:
 		return agent.JobResult{Status: "failed", Error: "unsupported job type: " + job.Type}, nil
 	}
@@ -227,6 +328,20 @@ func payloadToConfig(p map[string]interface{}) *agent.InstanceConfig {
 	}
 	if v, ok := p["telnet_password"].(string); ok {
 		cfg.TelnetPassword = v
+	}
+	if v, ok := p["update_command"].(string); ok && v != "" {
+		if cfg.Extra == nil {
+			cfg.Extra = map[string]interface{}{}
+		}
+		cfg.Extra["update_command"] = v
+	}
+	if extra, ok := p["extra"].(map[string]interface{}); ok {
+		if cfg.Extra == nil {
+			cfg.Extra = map[string]interface{}{}
+		}
+		for k, v := range extra {
+			cfg.Extra[k] = v
+		}
 	}
 	return cfg
 }
@@ -505,10 +620,6 @@ func splitPlayerNames(s string) []string {
 		}
 	}
 	return out
-}
-
-func (a *Adapter) StreamChat(ctx context.Context, cfg *agent.InstanceConfig, w io.Writer) error {
-	return agent.ErrUnsupported
 }
 
 // sanitizeRCONArg removes metacharacters that could inject additional RCON commands.

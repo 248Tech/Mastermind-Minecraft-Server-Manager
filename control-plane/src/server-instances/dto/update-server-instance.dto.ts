@@ -13,7 +13,7 @@ export class UpdateServerInstanceDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^(7dtd|minecraft)$/i, { message: 'gameType must be 7dtd or minecraft' })
+  @Matches(/^minecraft$/i, { message: 'gameType must be minecraft' })
   gameType?: string;
 
   @IsOptional()
@@ -44,4 +44,9 @@ export class UpdateServerInstanceDto {
   @IsOptional()
   @IsBoolean()
   rebootIfDown?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  mapEmbedUrl?: string;
 }

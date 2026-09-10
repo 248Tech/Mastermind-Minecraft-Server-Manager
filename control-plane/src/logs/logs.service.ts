@@ -43,15 +43,18 @@ export class LogsService {
     const lines = combined.split(/\r?\n/);
     this.chatLineBuffers.set(serverInstanceId, lines.pop()?.slice(-4096) ?? '');
     for (const line of lines) {
+      // Minecraft / Paper / NeoForge: "<Name> message" or "[Not Secure] <Name> message"
+      const mcMatch = line.match(/\]:\s*(?:\[Not Secure\]\s*)?<([^>\n]{1,32})>\s+(.+)$/);
+      // Legacy 7DTD chat (ignored once removed, but harmless during transition)
       const playerMatch = line.match(/\bChat \(from '([^']+)', entity id '([^']+)', to '([^']+)'\): '(.*)': (.*)$/);
       const serverMatch = line.match(/\bChat \(from '-non-player-', entity id '-1', to '([^']+)'\): (.*)$/);
-      if (!playerMatch && !serverMatch) continue;
+      if (!mcMatch && !playerMatch && !serverMatch) continue;
       const isServer = !!serverMatch;
-      const playerId = isServer ? '-non-player-' : playerMatch![1];
-      const entityId = isServer ? '-1' : playerMatch![2];
-      const channel = isServer ? serverMatch![1] : playerMatch![3];
-      const rawName = isServer ? 'Server' : playerMatch![4];
-      const rawMessage = isServer ? serverMatch![2] : playerMatch![5];
+      const playerId = mcMatch ? mcMatch[1] : isServer ? '-non-player-' : playerMatch![1];
+      const entityId = mcMatch ? '' : isServer ? '-1' : playerMatch![2];
+      const channel = mcMatch ? 'Global' : isServer ? serverMatch![1] : playerMatch![3];
+      const rawName = mcMatch ? mcMatch[1] : isServer ? 'Server' : playerMatch![4];
+      const rawMessage = mcMatch ? mcMatch[2] : isServer ? serverMatch![2] : playerMatch![5];
       const playerName = rawName.trim().slice(0, 128);
       const message = rawMessage.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, 2000);
       if (!playerName || !message) continue;
@@ -65,8 +68,6 @@ export class LogsService {
       }
       const event = await this.prisma.event.create({ data: { orgId, sourceType: 'server_instance', sourceId: serverInstanceId, eventType: 'player_chat',
         payload: { playerId, entityId, playerName, channel, message, serverInstanceName, logTimestamp } } });
-      // Server announcements belong in the parsed chat transcript, but the
-      // player-chat Discord relay intentionally handles player messages only.
       if (isServer) continue;
       const moderated = await this.moderateChat(orgId, serverInstanceId, playerId, playerName, message).catch(() => false);
       if (moderated) continue;
@@ -136,8 +137,8 @@ export class LogsService {
   }
 
   private async enqueueModerationCommand(orgId:string,serverInstanceId:string,command:string){
-    const server=await this.prisma.serverInstance.findFirst({where:{id:serverInstanceId,orgId},include:{gameType:{select:{slug:true}},org:{select:{avoidBloodMoonRestart:true}}}});if(!server)return;
-    const payload={server_instance_id:server.id,game_type:server.gameType.slug,install_path:server.installPath??undefined,start_command:server.startCommand??undefined,telnet_host:server.telnetHost??undefined,telnet_port:server.telnetPort??undefined,telnet_password:server.telnetPassword??undefined,config:server.config??undefined,avoid_blood_moon_restart:server.org.avoidBloodMoonRestart,command};
+    const server=await this.prisma.serverInstance.findFirst({where:{id:serverInstanceId,orgId},include:{gameType:{select:{slug:true}}}});if(!server)return;
+    const payload={server_instance_id:server.id,game_type:server.gameType.slug,install_path:server.installPath??undefined,start_command:server.startCommand??undefined,telnet_host:server.telnetHost??undefined,telnet_port:server.telnetPort??undefined,telnet_password:server.telnetPassword??undefined,config:server.config??undefined,command};
     const job=await this.prisma.job.create({data:{orgId,serverInstanceId,type:'RCON',payload}});const run=await this.prisma.jobRun.create({data:{jobId:job.id,hostId:server.hostId,status:'pending'}});await this.jobsQueue.addJob(orgId,{jobId:job.id,jobRunId:run.id,hostId:server.hostId,serverInstanceId,type:'RCON',payload});
   }
 
@@ -150,7 +151,7 @@ export class LogsService {
       const payload = row.payload as Record<string, unknown>;
       const result = await this.alerts.relayPlayerChat({
         eventId: String(payload.eventId ?? row.id), orgId, serverInstanceId,
-        serverInstanceName: String(payload.serverInstanceName ?? '7DTD Server'),
+        serverInstanceName: String(payload.serverInstanceName ?? 'Minecraft Server'),
         playerName: String(payload.playerName ?? 'Unknown'), playerId: String(payload.playerId ?? 'unknown'),
         channel: String(payload.channel ?? 'Global'), message: String(payload.message ?? ''),
       });
@@ -191,17 +192,34 @@ export class LogsService {
     const lines = combined.split(/\r?\n/);
     this.lineBuffers.set(serverInstanceId, lines.pop()?.slice(-4096) ?? '');
     for (const line of lines) {
-      // A login produces PlayerLogin, GMSG joined, and PlayerSpawnedInWorld lines.
-      // Only the latter two confirm entry, and ignore spawn events caused by teleports.
-      const joined = /GMSG: Player '.*' joined the game/i.test(line)
+      const uuidLine = line.match(/UUID of player ([A-Za-z0-9_]{1,16}) is ([0-9a-fA-F-]{32,36})/i);
+      if (uuidLine) {
+        const name = uuidLine[1];
+        const uuid = uuidLine[2].toLowerCase();
+        const identityKey = `uuid:${uuid}`;
+        await reconcileNameFallback(this.prisma, serverInstanceId, identityKey, name, null, null);
+        await this.prisma.player.upsert({
+          where: { serverInstanceId_identityKey: { serverInstanceId, identityKey } },
+          create: { orgId, serverInstanceId, identityKey, name, online: false, lastSeenAt: new Date() },
+          update: { name },
+        });
+        continue;
+      }
+
+      const joined = /:\s*([A-Za-z0-9_]{1,16}) joined the game\b/i.test(line)
+        || /GMSG: Player '.*' joined the game/i.test(line)
         || /PlayerSpawnedInWorld\s*\(reason:\s*(?:EnterMultiplayer|JoinMultiplayer)\b/i.test(line);
-      const left = /PlayerDisconnected|GMSG: Player '.*' left/i.test(line);
+      const left = /:\s*([A-Za-z0-9_]{1,16}) left the game\b/i.test(line)
+        || /PlayerDisconnected|GMSG: Player '.*' left/i.test(line);
       if (!joined && !left) continue;
+
+      const mcName = line.match(/:\s*([A-Za-z0-9_]{1,16}) (?:joined|left) the game\b/i)?.[1];
       const steam = line.match(/(?:PltfmId|OwnerID)\s*=\s*'?Steam_([0-9]{15,20})'?/i)?.[1]
         ?? line.match(/\b(7656119[0-9]{10})\b/)?.[1];
       const eos = line.match(/(?:CrossId|PltfmId)\s*=\s*'?EOS_([a-f0-9]{20,64})'?/i)?.[1];
       const entityText = line.match(/EntityID[=:]\s*([0-9]+)/i)?.[1];
-      const name = (line.match(/PlayerName\s*=\s*'?([^',\r\n]+)'?/i)?.[1]
+      const name = (mcName
+        ?? line.match(/PlayerName\s*=\s*'?([^',\r\n]+)'?/i)?.[1]
         ?? line.match(/GMSG: Player '([^']+)'/i)?.[1])?.trim();
       const identityKey = steam ? `steam:${steam}` : eos ? `eos:${eos}` : name ? `name:${name.toLowerCase()}` : '';
       if (!identityKey || !name) continue;

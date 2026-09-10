@@ -60,18 +60,17 @@ const emptyForm: FormState = {
   eventType: 'player_level',
   comparison: 'gte',
   level: '50',
-  actionType: 'land_claim_reward',
+  actionType: 'grant_items',
   claimCount: '5',
   grants: [],
   applyToExisting: false,
   notifyPlayer: true,
-  message: '{name} reached level {level} and can now place {claims} land claims.',
+  message: 'You reached a reward level.',
 };
 
 const fallbackCatalog: TriggerCatalog = {
   events: [{ type: 'player_level', label: 'Player level' }],
   actions: [
-    { type: 'land_claim_reward', label: 'Land claim reward' },
     { type: 'grant_items', label: 'Grant items' },
   ],
 };
@@ -89,8 +88,7 @@ function actionSummary(trigger: TriggerRecord) {
       ? `Grant ${items.map((item) => `${item.quantity}× ${item.name}${item.quality ? ` Q${item.quality}` : ''}`).join(', ')}`
       : 'Grant items';
   }
-  const count = Number(trigger.actionConfig?.claimCount);
-  return Number.isInteger(count) ? `+${count} claims (server default + donated)` : trigger.actionType;
+  return trigger.actionType;
 }
 
 export default function TriggersPage() {
@@ -124,9 +122,6 @@ export default function TriggersPage() {
     if (!orgId) return;
     setItemCatalogBusy(true);
     try {
-      const iconResponse = await fetch('/api/item-icons', { cache: 'no-store' });
-      const iconBody = iconResponse.ok ? await iconResponse.json() as { items?: string[] } : { items: [] };
-      const icons = Array.isArray(iconBody.items) ? iconBody.items : [];
       let gameItems: string[] = [];
       try {
         const response = await api.get<{ items?: string[]; jobRunId?: string }>(`/api/orgs/${orgId}/shop-items/game-items${refresh ? '?refresh=1' : ''}`);
@@ -137,20 +132,12 @@ export default function TriggersPage() {
           gameItems = response.items || [];
         }
       } catch {
-        // Icons are enough for the same dropdown used in the shop.
+        // Catalog may be empty until the agent has scanned items.
       }
-      const names = [...new Set([...icons, ...gameItems].map((name) => String(name || '').trim()).filter(Boolean))]
+      const names = [...new Set(gameItems.map((name) => String(name || '').trim()).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
       setItemNames(names);
-      setItemCatalogSource(
-        icons.length && gameItems.length
-          ? `ItemIcons + items.xml (${names.length.toLocaleString()})`
-          : icons.length
-            ? `ItemIcons directory (${names.length.toLocaleString()})`
-            : gameItems.length
-              ? `items.xml (${names.length.toLocaleString()})`
-              : '',
-      );
+      setItemCatalogSource(gameItems.length ? `Game items (${names.length.toLocaleString()})` : '');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load game items');
     } finally {
@@ -197,9 +184,7 @@ export default function TriggersPage() {
         eventType: form.eventType,
         eventConfig: { level: Number(form.level), comparison: form.comparison },
         actionType: form.actionType,
-        actionConfig: form.actionType === 'grant_items'
-          ? { items: form.grants.filter((row) => row.name.trim()), notifyPlayer: form.notifyPlayer, message: form.message }
-          : { claimCount: Number(form.claimCount), notifyPlayer: form.notifyPlayer, message: form.message },
+        actionConfig: { items: form.grants.filter((row) => row.name.trim()), notifyPlayer: form.notifyPlayer, message: form.message },
         applyToExisting: form.applyToExisting,
       });
       setShowCreate(false);
@@ -337,13 +322,6 @@ export default function TriggersPage() {
                   {catalog.actions.map((action) => <option key={action.type} value={action.type}>{action.label}</option>)}
                 </select>
               </div>
-              {form.actionType === 'land_claim_reward' && (
-                <div>
-                  <label style={labelStyle}>Trigger land claims *</label>
-                  <input style={inputStyle} type="number" min={1} max={50} value={form.claimCount} onChange={(event) => setForm({ ...form, claimCount: event.target.value })} required />
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>Added on top of the server default LandClaimCount from serverconfig.xml, plus any extra claims from completed donations.</div>
-                </div>
-              )}
               {form.actionType === 'grant_items' && (
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={labelStyle}>Items to grant *</label>
@@ -359,8 +337,8 @@ export default function TriggersPage() {
               )}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={labelStyle}>In-game message</label>
-                <input style={inputStyle} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} placeholder="You reached the land-claim reward level." />
-                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>Placeholders: {'{name}'} {'{level}'} {'{claims}'} {'{items}'}</div>
+                <input style={inputStyle} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} placeholder="You reached a reward level." />
+                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>Placeholders: {'{name}'} {'{level}'} {'{items}'}</div>
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#cbd5e1', fontSize: '.85rem' }}>
                 <input type="checkbox" checked={form.applyToExisting} onChange={(event) => setForm({ ...form, applyToExisting: event.target.checked })} />
@@ -384,7 +362,7 @@ export default function TriggersPage() {
         )}
 
         {triggers.length === 0 ? (
-          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>No triggers yet. Example: at level 50, set land claims to 5.</p>
+          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>No triggers yet. Example: at level 50, grant diamond ×4.</p>
         ) : (
           <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #1e1e2a' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>

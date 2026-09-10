@@ -21,7 +21,6 @@ import (
 	"github.com/mastermind/agent/internal/discovery"
 	"github.com/mastermind/agent/internal/execute"
 	"github.com/mastermind/agent/internal/games"
-	sevendtd "github.com/mastermind/agent/internal/games/7dtd"
 	"github.com/mastermind/agent/internal/games/minecraft"
 	"github.com/mastermind/agent/internal/heartbeat"
 	"github.com/mastermind/agent/internal/jobs"
@@ -110,31 +109,6 @@ func main() {
 			}
 		}
 	}
-	if shouldDiscoverSevenDTD(cfg) {
-		discovered, err := discovery.DiscoverSevenDTD(cfg.Discovery.SevenDTD)
-		if err != nil {
-			slog.Warn("7dtd discovery failed", "err", err)
-		} else {
-			if gameProbe.Address == "" && discovered.TelnetHost != "" && discovered.TelnetPort > 0 {
-				gameProbe.Address = net.JoinHostPort(discovered.TelnetHost, strconv.Itoa(discovered.TelnetPort))
-				gameProbe.CloseCommand = "exit"
-			}
-			err = cl.SyncDiscoveredServer(context.Background(), hostID, "7dtd", &client.DiscoveredServer{
-				Name:           discovered.Name,
-				InstallPath:    discovered.InstallPath,
-				StartCommand:   discovered.StartCommand,
-				TelnetHost:     discovered.TelnetHost,
-				TelnetPort:     discovered.TelnetPort,
-				TelnetPassword: discovered.TelnetPassword,
-				Config:         discovered.Config,
-			})
-			if err != nil {
-				slog.Warn("7dtd discovery sync failed", "err", err)
-			} else {
-				slog.Info("7dtd discovery synced", "install_path", discovered.InstallPath, "name", discovered.Name)
-			}
-		}
-	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -144,7 +118,6 @@ func main() {
 	go heartbeat.Run(ctx, cl, hostID, cfg.Host.Name, interval, version, gameProbe)
 
 	registry := games.NewRegistry()
-	registry.Register(sevendtd.NewAdapter())
 	registry.Register(minecraft.NewAdapter())
 	exec := &execute.RegistryExecutor{Registry: registry}
 
@@ -181,19 +154,6 @@ func loadHostID(agentKeyPath string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(b)), nil
-}
-
-func shouldDiscoverSevenDTD(cfg *config.Config) bool {
-	if cfg == nil {
-		return false
-	}
-	d := cfg.Discovery.SevenDTD
-	return d.Enabled ||
-		d.InstallPath != "" ||
-		d.ServerConfigPath != "" ||
-		d.ModsPath != "" ||
-		d.SavesPath != "" ||
-		d.ServerAdminXMLPath != ""
 }
 
 func shouldDiscoverMinecraft(cfg *config.Config) bool {

@@ -17,11 +17,7 @@ import { HealthMonitorModule } from './health-monitor/health-monitor.module';
 import { PlayersModule } from './players/players.module';
 import { PlayerAuthModule } from './player-auth/player-auth.module';
 import { DonationsModule } from './donations/donations.module';
-import { PrismaCoreModule } from './prismacore/prismacore.module';
-import { AllocsModule } from './allocs/allocs.module';
 import { TriggersModule } from './triggers/triggers.module';
-import { VehiclesModule } from './vehicles/vehicles.module';
-import { PoiCatalogModule } from './poi-catalog/poi-catalog.module';
 
 @Module({
   imports: [
@@ -44,11 +40,7 @@ import { PoiCatalogModule } from './poi-catalog/poi-catalog.module';
     PlayersModule,
     PlayerAuthModule,
     DonationsModule,
-    PrismaCoreModule,
-    AllocsModule,
     TriggersModule,
-    VehiclesModule,
-    PoiCatalogModule,
   ],
 })
 export class AppModule {}

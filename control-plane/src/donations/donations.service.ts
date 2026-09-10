@@ -240,7 +240,6 @@ export class DonationsService {
     }
     await this.notifyDiscord(player.orgId, player.name, paid.amountCents, lineRows.map((line) => line.itemName));
     await this.jobs.enqueueShopGrants(paid.orgId, paid.serverInstanceId, player.id, paid.steamId).catch(() => undefined);
-    await this.triggers.refreshLandClaims(player.id).catch(() => undefined);
   }
 
   private async buildDonationLines(paid: {

@@ -159,7 +159,7 @@ func (l *executionLimiter) mutationIsBusy() bool { return l.mutationBusy.Load() 
 // game state and therefore must pass through the serialized mutation gate.
 func isReadOnly(jobType string) bool {
 	switch jobType {
-	case "MOD_LIST", "MOD_QUARANTINE_LIST", "MOD_PENDING_LIST", "MOD_CONFIG_READ", "PROFILE_LIST", "PROFILE_READ", "PLAYER_LIST_SYNC", "PLAYER_ADMIN_LIST", "SAVE_LIST", "REGION_HEALER_STATUS", "ITEM_CATALOG", "POI_CATALOG", "POI_PREVIEW":
+	case "MOD_LIST", "MOD_QUARANTINE_LIST", "MOD_PENDING_LIST", "MOD_CONFIG_READ", "SERVER_CONFIG_READ", "PLAYER_LIST_SYNC", "PLAYER_ADMIN_LIST", "SAVE_LIST", "ITEM_CATALOG":
 		return true
 	default:
 		return false

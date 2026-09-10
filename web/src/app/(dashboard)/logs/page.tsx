@@ -28,7 +28,7 @@ export default function LogsPage() {
 
   useEffect(() => {
     if (!orgId) return;
-    api.get<ServerInstance[]>(`/api/orgs/${orgId}/server-instances`).then(rows=>setServers(rows.filter(row=>row.gameType==='7dtd'))).catch(e => setError(e.message));
+    api.get<ServerInstance[]>(`/api/orgs/${orgId}/server-instances`).then(rows=>setServers(rows.filter(row=>row.gameType==='minecraft'))).catch(e => setError(e.message));
     api.get<{logRetentionDays:number}>(`/api/orgs/${orgId}/logs/settings`)
       .then(s => setRetention(s.logRetentionDays)).catch(e => setError(e.message));
   }, [orgId]);

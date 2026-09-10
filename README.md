@@ -2,7 +2,7 @@
 
 **Control Plane + Host Agent** for managing Minecraft (Java / NeoForge / Fabric / Paper) servers. Instead of SSH’ing into each box, you run a small agent on every host; the control plane sends jobs (start, stop, safe restart, RCON, backups, etc.) and the agent runs them locally.
 
-Branched from [Mastermind-7DTD-AI-Server-Manager](https://github.com/248Tech/Mastermind-7DTD-AI-Server-Manager).
+This product is **Minecraft-only**. It was branched from [Mastermind-7DTD-AI-Server-Manager](https://github.com/248Tech/Mastermind-7DTD-AI-Server-Manager); the 7DTD agent, Allocs/PrismaCore integrations, and related UI were removed in 0.2.0.
 
 ---
 

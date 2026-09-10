@@ -36,9 +36,6 @@ class UpdateOrgDto {
   frigateWebhookSecret?: string;
   @IsOptional()
   @IsBoolean()
-  avoidBloodMoonRestart?: boolean;
-  @IsOptional()
-  @IsBoolean()
   stabilityRestartEnabled?: boolean;
   @IsOptional()
   @Type(() => Number)

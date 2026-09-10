@@ -5,14 +5,12 @@ import { AuthRateLimitService } from '../auth/auth-rate-limit.service';
 import { clientIp } from '../common/client-ip';
 import { SteamVerifyDto } from './dto/steam-verify.dto';
 import { NameAuthDto } from './dto/name-auth.dto';
-import { AllocsService } from '../allocs/allocs.service';
 
 @Controller('api/player-auth')
 export class PlayerAuthController {
   constructor(
     private readonly auth: PlayerAuthService,
     private readonly rateLimit: AuthRateLimitService,
-    private readonly allocs: AllocsService,
   ) {}
 
   @Post('steam/verify')
@@ -96,15 +94,24 @@ export class PlayerAuthController {
 
   @Get('map/entities')
   async mapEntities(@Headers('authorization') authorization?: string) {
-    let includePlayers = false;
+    // Minecraft portals embed BlueMap/Dynmap; Allocs entity feeds are unused.
     if (authorization?.startsWith('Bearer ')) {
       try {
-        const player = await this.auth.requirePlayer(authorization.slice(7));
-        includePlayers = player.sessionAuth === 'steam';
+        await this.auth.requirePlayer(authorization.slice(7));
       } catch {
-        includePlayers = false;
+        /* optional auth — still return empty payload */
       }
     }
-    return this.allocs.playerMapEntities(includePlayers);
+    return {
+      players: [],
+      animals: [],
+      hostiles: [],
+      playerVisibility: 'hidden' as const,
+      errors: {
+        players: 'Map entities unavailable for Minecraft',
+        animals: 'Map entities unavailable for Minecraft',
+        hostiles: 'Map entities unavailable for Minecraft',
+      },
+    };
   }
 }

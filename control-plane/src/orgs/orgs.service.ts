@@ -60,16 +60,10 @@ export class OrgsService {
     return{ok:true,configured:false};
   }
 
-  getProfileEditorCredit(orgId: string) {
+  getProfileEditorCredit(_orgId: string) {
     return {
-      orgId,
-      name: '7 Days to Die TTP Profile Editor',
-      upstreamAuthor: 'RussDev7 / DannyRuss',
-      upstreamRepository: 'https://github.com/RussDev7/7D2DProfileEditor',
-      upstreamCommit: '270f998adf70f3724afd93ba0e08569e3ba78c95',
-      license: 'GNU GPL v3',
-      acknowledgements: ['kani-momonga/7DaysProfileEditorPHP', 'Karlovsky120/7DaysProfileEditor'],
-      integration: 'Isolated upstream service proxied by Mastermind; source profiles are never overwritten automatically.',
+      available: false,
+      message: 'Profile Editor was part of the retired 7DTD stack',
     };
   }
 
@@ -245,7 +239,6 @@ export class OrgsService {
       discordWebhookUrl: userOrg.role.name === 'admin' ? userOrg.org.discordWebhookUrl : undefined,
       discordWebhookConfigured: Boolean(userOrg.org.discordWebhookUrl),
       frigateConfigured: Boolean(userOrg.org.frigateUrl),
-      avoidBloodMoonRestart: userOrg.org.avoidBloodMoonRestart,
       stabilityRestartEnabled: userOrg.org.stabilityRestartEnabled,
       stabilityRestartMemoryGiB: userOrg.org.stabilityRestartMemoryGiB,
       stabilityRestartCooldownMinutes: userOrg.org.stabilityRestartCooldownMinutes,
@@ -279,7 +272,6 @@ export class OrgsService {
       slug: m.org.slug,
       discordWebhookConfigured: Boolean(m.org.discordWebhookUrl),
       frigateConfigured: Boolean(m.org.frigateUrl),
-      avoidBloodMoonRestart: m.org.avoidBloodMoonRestart,
       stabilityRestartEnabled: m.org.stabilityRestartEnabled,
       stabilityRestartMemoryGiB: m.org.stabilityRestartMemoryGiB,
       stabilityRestartCooldownMinutes: m.org.stabilityRestartCooldownMinutes,
@@ -296,14 +288,14 @@ export class OrgsService {
   async updateOrg(
     orgId: string,
     userId: string,
-    updates: { discordWebhookUrl?: string; frigateUrl?: string; frigateApiKey?: string; frigateWebhookSecret?: string; avoidBloodMoonRestart?: boolean; stabilityRestartEnabled?: boolean; stabilityRestartMemoryGiB?: number; stabilityRestartCooldownMinutes?: number },
-  ): Promise<{ ok: true; avoidBloodMoonRestart: boolean; stabilityRestartEnabled: boolean; stabilityRestartMemoryGiB: number; stabilityRestartCooldownMinutes: number }> {
+    updates: { discordWebhookUrl?: string; frigateUrl?: string; frigateApiKey?: string; frigateWebhookSecret?: string; stabilityRestartEnabled?: boolean; stabilityRestartMemoryGiB?: number; stabilityRestartCooldownMinutes?: number },
+  ): Promise<{ ok: true; stabilityRestartEnabled: boolean; stabilityRestartMemoryGiB: number; stabilityRestartCooldownMinutes: number }> {
     const userOrg = await this.prisma.userOrg.findUnique({
       where: { userId_orgId: { userId, orgId } },
       include: { role: true },
     });
     if (!userOrg) throw new ForbiddenException('Not a member of this org');
-    if ((updates.avoidBloodMoonRestart !== undefined || updates.stabilityRestartEnabled !== undefined || updates.stabilityRestartMemoryGiB !== undefined || updates.stabilityRestartCooldownMinutes !== undefined) && userOrg.role.name !== 'admin') {
+    if ((updates.stabilityRestartEnabled !== undefined || updates.stabilityRestartMemoryGiB !== undefined || updates.stabilityRestartCooldownMinutes !== undefined) && userOrg.role.name !== 'admin') {
       throw new ForbiddenException('Only organization administrators may change restart protection');
     }
 
@@ -312,13 +304,12 @@ export class OrgsService {
     if (updates.frigateUrl !== undefined) data.frigateUrl = updates.frigateUrl || null;
     if (updates.frigateApiKey !== undefined) data.frigateApiKey = updates.frigateApiKey || null;
     if (updates.frigateWebhookSecret !== undefined) data.frigateWebhookSecret = updates.frigateWebhookSecret || null;
-    if (updates.avoidBloodMoonRestart !== undefined) data.avoidBloodMoonRestart = updates.avoidBloodMoonRestart;
     if (updates.stabilityRestartEnabled !== undefined) data.stabilityRestartEnabled = updates.stabilityRestartEnabled;
     if (updates.stabilityRestartMemoryGiB !== undefined) data.stabilityRestartMemoryGiB = updates.stabilityRestartMemoryGiB;
     if (updates.stabilityRestartCooldownMinutes !== undefined) data.stabilityRestartCooldownMinutes = updates.stabilityRestartCooldownMinutes;
 
     const org = await this.prisma.org.update({ where: { id: orgId }, data });
-    return { ok: true, avoidBloodMoonRestart: org.avoidBloodMoonRestart, stabilityRestartEnabled: org.stabilityRestartEnabled, stabilityRestartMemoryGiB: org.stabilityRestartMemoryGiB, stabilityRestartCooldownMinutes: org.stabilityRestartCooldownMinutes };
+    return { ok: true, stabilityRestartEnabled: org.stabilityRestartEnabled, stabilityRestartMemoryGiB: org.stabilityRestartMemoryGiB, stabilityRestartCooldownMinutes: org.stabilityRestartCooldownMinutes };
   }
 
   async testFrigateConnection(

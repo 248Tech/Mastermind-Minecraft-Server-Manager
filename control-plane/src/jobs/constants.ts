@@ -1,4 +1,4 @@
-/** Job types for Minecraft (primary) and legacy 7DTD server control */
+/** Job types for Minecraft server control */
 export const JOB_TYPES = [
   'SERVER_START',
   'SERVER_STOP',
@@ -12,10 +12,6 @@ export const JOB_TYPES = [
   'SERVER_UPDATE',
   'RCON',
   'SEND_COMMAND',
-  'REGION_HEALER_START',
-  'REGION_HEALER_STOP',
-  'REGION_HEALER_STATUS',
-  'REGION_HEALER_CONFIGURE',
   'SAVE_LIST',
   'SAVE_BACKUP',
   'SAVE_RESTORE',
@@ -46,12 +42,6 @@ export const JOB_TYPES = [
   'MOD_PENDING_APPROVE',
   'MOD_PENDING_REJECT',
   'ITEM_CATALOG',
-  'POI_CATALOG',
-  'POI_PREVIEW',
-  'PROFILE_LIST',
-  'PROFILE_READ',
-  'PROFILE_STAGE',
-  'TRIGGER_LAND_CLAIM',
   'TRIGGER_GRANT_ITEMS',
   'start',
   'stop',

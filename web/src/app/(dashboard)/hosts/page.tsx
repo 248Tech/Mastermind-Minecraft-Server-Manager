@@ -463,7 +463,7 @@ export default function HostsPage() {
 
   const [showRegisterServer, setShowRegisterServer] = useState(false);
   const [serverForm, setServerForm] = useState({
-    name: '', hostId: '', gameType: '7dtd', installPath: '', startCommand: '',
+    name: '', hostId: '', gameType: 'minecraft', installPath: '', startCommand: '',
     telnetHost: '', telnetPort: '', telnetPassword: '',
   });
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -524,7 +524,7 @@ export default function HostsPage() {
         telnetPassword: serverForm.telnetPassword || null,
       });
       setRegisterSuccess('Server instance registered successfully.');
-      setServerForm({ name: '', hostId: '', gameType: '7dtd', installPath: '', startCommand: '', telnetHost: '', telnetPort: '', telnetPassword: '' });
+      setServerForm({ name: '', hostId: '', gameType: 'minecraft', installPath: '', startCommand: '', telnetHost: '', telnetPort: '', telnetPassword: '' });
       const updated = await fetchData();
       if (updated) { setHosts(updated.hosts); setServers(updated.servers); }
     } catch (err: unknown) {
@@ -925,12 +925,12 @@ export default function HostsPage() {
             <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 600, color: '#f1f5f9' }}>New Server Instance</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
               {[
-                { label: 'Name *', key: 'name', placeholder: 'My 7DTD Server', required: true },
-                { label: 'Install Path', key: 'installPath', placeholder: '/opt/7dtd' },
-                { label: 'Start Command', key: 'startCommand', placeholder: './startserver.sh' },
-                { label: 'Telnet Host', key: 'telnetHost', placeholder: '127.0.0.1' },
-                { label: 'Telnet Port', key: 'telnetPort', placeholder: '8081', type: 'number' },
-                { label: 'Telnet Password', key: 'telnetPassword', placeholder: 'Optional', type: 'password' },
+                { label: 'Name *', key: 'name', placeholder: 'My Minecraft Server', required: true },
+                { label: 'Install Path', key: 'installPath', placeholder: '/opt/minecraft' },
+                { label: 'Start Command', key: 'startCommand', placeholder: './start.sh' },
+                { label: 'RCON Host', key: 'telnetHost', placeholder: '127.0.0.1' },
+                { label: 'RCON Port', key: 'telnetPort', placeholder: '25575', type: 'number' },
+                { label: 'RCON Password', key: 'telnetPassword', placeholder: 'Optional', type: 'password' },
               ].map((f) => (
                 <div key={f.key}>
                   <label style={labelStyle}>{f.label}</label>
@@ -956,7 +956,6 @@ export default function HostsPage() {
               <div>
                 <label style={labelStyle}>Game Type *</label>
                 <select style={inputStyle} value={serverForm.gameType} onChange={e => setServerForm({ ...serverForm, gameType: e.target.value })} onFocus={onFocus} onBlur={onBlur}>
-                  <option value="7dtd">7 Days to Die</option>
                   <option value="minecraft">Minecraft</option>
                 </select>
               </div>

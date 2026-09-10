@@ -69,12 +69,7 @@ export default function DonatorShopPage() {
     return [...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   }, []);
 
-  const loadIconDirectory = useCallback(async () => {
-    const response = await fetch('/api/item-icons', { cache: 'no-store' });
-    if (!response.ok) return [] as string[];
-    const body = await response.json() as { items?: string[] };
-    return Array.isArray(body.items) ? body.items : [];
-  }, []);
+  const loadIconDirectory = useCallback(async () => [] as string[], []);
 
   const loadCatalog = useCallback(async (refresh = false) => {
     if (!orgId) return;
@@ -91,18 +86,14 @@ export default function DonatorShopPage() {
           gameItems = response.items || [];
         }
       } catch {
-        // Icon directory alone is enough for autocomplete; game scan is enrichment.
+        // Game scan may be empty until the agent catalogs items.
       }
       const merged = mergeCatalog(icons, gameItems);
       setCatalog(merged);
       setCatalogSource(
-        icons.length && gameItems.length
-          ? `ItemIcons + items.xml (${merged.length.toLocaleString()})`
-          : icons.length
-            ? `ItemIcons directory (${merged.length.toLocaleString()})`
-            : gameItems.length
-              ? `items.xml (${merged.length.toLocaleString()})`
-              : '',
+        gameItems.length
+          ? `Game items (${merged.length.toLocaleString()})`
+          : '',
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load game items');

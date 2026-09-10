@@ -78,6 +78,6 @@ export class JobsQueueService implements OnModuleDestroy {
     // Keep this allowlist aligned with the agent. Arbitrary RCON and
     // SEND_COMMAND payloads can mutate game state and must stay behind the
     // per-host mutation gate.
-    return ['MOD_LIST','MOD_QUARANTINE_LIST','MOD_PENDING_LIST','MOD_CONFIG_READ','SERVER_CONFIG_READ','PROFILE_LIST','PROFILE_READ','PLAYER_LIST_SYNC','PLAYER_ADMIN_LIST','SAVE_LIST','ITEM_CATALOG','POI_CATALOG','POI_PREVIEW'].includes(type);
+    return ['MOD_LIST','MOD_QUARANTINE_LIST','MOD_PENDING_LIST','MOD_CONFIG_READ','SERVER_CONFIG_READ','PLAYER_LIST_SYNC','PLAYER_ADMIN_LIST','SAVE_LIST','ITEM_CATALOG'].includes(type);
   }
 }

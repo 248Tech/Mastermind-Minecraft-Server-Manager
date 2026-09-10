@@ -1,0 +1,1 @@
+ALTER TABLE "ServerInstance" ADD COLUMN IF NOT EXISTS "map_embed_url" TEXT;

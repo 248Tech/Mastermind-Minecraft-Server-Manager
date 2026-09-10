@@ -1,0 +1,122 @@
+package minecraft
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/mastermind/agent/internal/agent"
+)
+
+type grantItem struct {
+	Name     string
+	Quantity int
+}
+
+func grantItemsFromPayload(payload map[string]interface{}) ([]grantItem, error) {
+	raw, ok := payload["items"].([]interface{})
+	if !ok || len(raw) == 0 {
+		return nil, fmt.Errorf("at least one grant item is required")
+	}
+	if len(raw) > 16 {
+		return nil, fmt.Errorf("at most 16 grant items are allowed")
+	}
+	items := make([]grantItem, 0, len(raw))
+	for _, row := range raw {
+		record, ok := row.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("invalid grant item")
+		}
+		name := sanitizeItemID(getString(record, "name", ""))
+		quantity := getInt(record, "quantity", 1)
+		if name == "" || quantity < 1 || quantity > 2304 {
+			return nil, fmt.Errorf("invalid grant item")
+		}
+		items = append(items, grantItem{Name: name, Quantity: quantity})
+	}
+	return items, nil
+}
+
+func sanitizeItemID(s string) string {
+	s = strings.TrimSpace(s)
+	var b strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == ':' || r == '/' || r == '.' || r == '-' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+func (a *Adapter) GrantItems(ctx context.Context, cfg *agent.InstanceConfig, payload map[string]interface{}) (map[string]interface{}, error) {
+	player := sanitizeRCONArg(getString(payload, "player", getString(payload, "name", getString(payload, "player_id", ""))))
+	if player == "" {
+		return nil, fmt.Errorf("player name required")
+	}
+	items, err := grantItemsFromPayload(payload)
+	if err != nil {
+		return nil, err
+	}
+	outputs := make([]string, 0, len(items))
+	delivered := make([]string, 0, len(items))
+	for _, item := range items {
+		cmd := fmt.Sprintf("give %s %s %d", player, item.Name, item.Quantity)
+		out, sendErr := a.SendCommand(ctx, cfg, cmd)
+		if strings.TrimSpace(out) != "" {
+			outputs = append(outputs, out)
+		}
+		if sendErr != nil {
+			return nil, sendErr
+		}
+		delivered = append(delivered, fmt.Sprintf("%dx %s", item.Quantity, item.Name))
+	}
+	if msg := strings.TrimSpace(getString(payload, "message", "")); msg != "" {
+		_, _ = a.SendCommand(ctx, cfg, "tell "+player+" "+sanitizeRCONArg(msg))
+	}
+	return map[string]interface{}{
+		"delivered": delivered,
+		"output":    strings.Join(outputs, "\n"),
+		"player":    player,
+	}, nil
+}
+
+type opsEntry struct {
+	UUID                 string `json:"uuid"`
+	Name                 string `json:"name"`
+	Level                int    `json:"level"`
+	BypassesPlayerLimit  bool   `json:"bypassesPlayerLimit"`
+}
+
+func (a *Adapter) ListAdmins(cfg *agent.InstanceConfig, payload map[string]interface{}) ([]map[string]interface{}, error) {
+	path := getString(payload, "ops_path", "")
+	if path == "" {
+		if cfg.InstallPath == "" {
+			return nil, fmt.Errorf("install_path required")
+		}
+		path = filepath.Join(cfg.InstallPath, "ops.json")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []map[string]interface{}{}, nil
+		}
+		return nil, err
+	}
+	var entries []opsEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return nil, fmt.Errorf("parse ops.json: %w", err)
+	}
+	out := make([]map[string]interface{}, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, map[string]interface{}{
+			"uuid":                e.UUID,
+			"name":                e.Name,
+			"level":               e.Level,
+			"bypassesPlayerLimit": e.BypassesPlayerLimit,
+		})
+	}
+	return out, nil
+}

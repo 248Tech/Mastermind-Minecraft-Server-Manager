@@ -1,12 +1,13 @@
 export const MAX_GRANT_QUANTITY = 9_999;
 export const MAX_GRANT_ATTEMPTS = 8;
 export const MAX_GRANT_ITEMS = 8;
-export const GRANT_ITEM_NAME = /^[A-Za-z][A-Za-z0-9_:]{0,79}$/;
+/** Minecraft item ids: diamond, minecraft:diamond, modid:item_name */
+export const GRANT_ITEM_NAME = /^[A-Za-z][A-Za-z0-9_.:-]{0,79}$/;
 
 export type GrantItemSpec = {
   name: string;
   quantity: number;
-  quality: number | null;
+  quality: number | null; // unused for Minecraft; kept for schema compatibility
 };
 
 export type LineGrantItem = GrantItemSpec & {
@@ -33,6 +34,7 @@ export function parseGrantQuantity(raw: unknown, fallback = 1): number | null {
   return value;
 }
 
+/** Quality is ignored for Minecraft; accept null/empty and reject non-empty invalid values for API compat. */
 export function parseGrantQuality(raw: unknown): number | null | false {
   if (raw == null || raw === '') return null;
   const value = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw.trim()) : NaN;
@@ -47,38 +49,55 @@ export function parseChatColor(raw: unknown): string | null | false {
   return match ? match[1].toUpperCase() : false;
 }
 
+/** Prefer in-game name for RCON give; fall back to bare UUID. */
+export function grantPlayerTarget(playerName: string | null | undefined, uuid?: string | null): string | null {
+  const name = String(playerName || '').trim();
+  if (name && /^[A-Za-z0-9_]{1,16}$/.test(name)) return name;
+  const id = String(uuid || '').trim();
+  if (/^[0-9a-fA-F-]{32,36}$/.test(id)) return id;
+  return null;
+}
+
+/** @deprecated Use grantPlayerTarget — Steam targets are not used for Minecraft. */
 export function grantSteamTarget(steamId: string | null | undefined): string | null {
   if (!steamId) return null;
   const match = /^(?:Steam_)?([0-9]{15,20})$/i.exec(steamId.trim());
-  return match ? `Steam_${match[1]}` : null;
+  return match ? match[1] : null;
 }
 
+export function buildGiveCommand(
+  playerName: string | null | undefined,
+  itemName: string | null | undefined,
+  amount: number | null | undefined,
+  _quality?: number | null,
+  uuid?: string | null,
+): string | null {
+  const target = grantPlayerTarget(playerName, uuid);
+  const item = parseGrantItemName(itemName);
+  const count = parseGrantQuantity(amount);
+  if (!target || !item || count == null) return null;
+  return `give ${target} ${item} ${count}`;
+}
+
+/** @deprecated Prefer buildGiveCommand for Minecraft. */
 export function buildGivePlusCommand(
-  steamId: string | null | undefined,
+  steamIdOrName: string | null | undefined,
   itemName: string | null | undefined,
   amount: number | null | undefined,
   quality?: number | null,
 ): string | null {
-  const target = grantSteamTarget(steamId);
-  const item = parseGrantItemName(itemName);
-  const count = parseGrantQuantity(amount);
-  if (!target || !item || count == null) return null;
-  if (/^all$/i.test(target.replace(/^Steam_/i, ''))) return null;
-  const qualityArg = quality === undefined ? null : parseGrantQuality(quality);
-  if (qualityArg === false) return null;
-  if (qualityArg == null) return `giveplus ${target} ${item} ${count}`;
-  return `giveplus ${target} ${item} ${count} ${qualityArg}`;
+  // Treat input as player name first (Minecraft), else legacy steam digits as name fallback.
+  const asName = String(steamIdOrName || '').replace(/^Steam_/i, '').trim();
+  return buildGiveCommand(asName, itemName, amount, quality);
 }
 
 export function buildChatColorCommand(
-  steamId: string | null | undefined,
-  color: string | null | undefined,
-  nameOnly = true,
+  _playerName: string | null | undefined,
+  _color: string | null | undefined,
+  _nameOnly = true,
 ): string | null {
-  const target = grantSteamTarget(steamId);
-  const hex = parseChatColor(color);
-  if (!target || !hex) return null;
-  return `playerchatcolor ${target} ${hex} ${nameOnly ? 1 : 0}`;
+  // No vanilla Minecraft equivalent for playerchatcolor; skip silently.
+  return null;
 }
 
 export function parseGrantItemList(raw: unknown): GrantItemSpec[] | false {
@@ -176,14 +195,14 @@ export function aggregateGrantStatus(items: LineGrantItem[]): string {
 }
 
 export function formatGrantSummary(items: GrantItemSpec[]): string {
-  return items.map((item) => `${item.quantity}× ${item.name}${item.quality ? ` Q${item.quality}` : ''}`).join(', ');
+  return items.map((item) => `${item.quantity}× ${item.name}`).join(', ');
 }
 
 export function classifyGrantOutput(output: string | null | undefined, jobStatus: string): GrantOutcome {
   const text = String(output || '');
-  if (/player not found|must be online|could not get the player/i.test(text)) return 'retry';
-  if (/item not found|invalid color|invalid value for|not a valid/i.test(text)) return 'failed';
-  if (/error executing command/i.test(text)) return 'failed';
+  if (/no player was found|player not found|must be online|that player cannot be found/i.test(text)) return 'retry';
+  if (/there is no such item|unknown item|invalid item|expected item/i.test(text)) return 'failed';
+  if (/incorrect argument|syntax error|unknown or incomplete command/i.test(text)) return 'failed';
   if (jobStatus === 'success') return 'delivered';
   return 'retry';
 }

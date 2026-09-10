@@ -10,9 +10,7 @@ import { PairingModule } from '../pairing/pairing.module';
 import { PrismaService } from '../prisma.service';
 import { OrgMemberGuard } from '../server-instances/guards/org-member.guard';
 import { AlertsModule } from '../alerts/alerts.module';
-import { AllocsModule } from '../allocs/allocs.module';
 import { TriggersModule } from '../triggers/triggers.module';
-import { VehiclesModule } from '../vehicles/vehicles.module';
 import { SchedulerModule } from '../scheduler/scheduler.module';
 
 @Module({
@@ -20,9 +18,7 @@ import { SchedulerModule } from '../scheduler/scheduler.module';
     BatchesModule,
     PairingModule,
     AlertsModule,
-    AllocsModule,
     forwardRef(() => TriggersModule),
-    forwardRef(() => VehiclesModule),
     SchedulerModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'change-me-user-secret',

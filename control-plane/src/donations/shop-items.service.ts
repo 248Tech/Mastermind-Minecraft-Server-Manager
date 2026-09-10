@@ -72,10 +72,10 @@ export class ShopItemsService {
       if (server) return server;
     }
     const server = await this.prisma.serverInstance.findFirst({
-      where: { orgId, gameType: { slug: '7dtd' } },
+      where: { orgId, gameType: { slug: 'minecraft' } },
       select: { id: true },
     });
-    if (!server) throw new ServiceUnavailableException('No 7DTD server is available for the item catalog');
+    if (!server) throw new ServiceUnavailableException('No Minecraft server is available for the item catalog');
     return server;
   }
 
@@ -311,7 +311,7 @@ function parseShopGrantFields(
       grantItems = parseGrantItemList([{ name: existing.grantItemName, quantity: existing.grantQuantity, quality: existing.grantQuality }]);
     }
   }
-  if (grantItems === false) throw new ConflictException('Each grant must be a 7DTD item name, quantity 1–9999, and optional quality 1–6. Maximum 8 items.');
+  if (grantItems === false) throw new ConflictException('Each grant must be a Minecraft item id (e.g. diamond or minecraft:diamond), quantity 1–9999. Maximum 8 items.');
   const first = grantItems[0] ?? null;
   const chatColor = input.chatColor == null
     ? existing?.chatColor ?? null

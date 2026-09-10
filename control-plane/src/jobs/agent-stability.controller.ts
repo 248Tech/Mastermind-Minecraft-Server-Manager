@@ -19,7 +19,7 @@ export class AgentStabilityController {
       throw new BadRequestException('serverInstanceId and a non-negative integer memoryBytes are required');
     }
     const server = await this.prisma.serverInstance.findFirst({
-      where: { id: serverInstanceId, hostId, gameType: { slug: '7dtd' } },
+      where: { id: serverInstanceId, hostId, gameType: { slug: 'minecraft' } },
       include: { org: { select: { stabilityRestartEnabled: true, stabilityRestartMemoryGiB: true, stabilityRestartCooldownMinutes: true } } },
     });
     if (!server) throw new NotFoundException('7DTD server instance not found on this host');

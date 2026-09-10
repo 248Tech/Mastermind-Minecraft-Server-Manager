@@ -99,7 +99,7 @@ func TestCancelledWaitDoesNotDeadlock(t *testing.T) {
 }
 
 func TestReadOnlyClassification(t *testing.T) {
-	for _, jobType := range []string{"MOD_LIST", "MOD_QUARANTINE_LIST", "MOD_PENDING_LIST", "MOD_CONFIG_READ", "PROFILE_LIST", "PROFILE_READ", "PLAYER_LIST_SYNC", "PLAYER_ADMIN_LIST", "SAVE_LIST", "ITEM_CATALOG", "POI_CATALOG", "POI_PREVIEW"} {
+	for _, jobType := range []string{"MOD_LIST", "MOD_QUARANTINE_LIST", "MOD_PENDING_LIST", "MOD_CONFIG_READ", "SERVER_CONFIG_READ", "PLAYER_LIST_SYNC", "PLAYER_ADMIN_LIST", "SAVE_LIST", "ITEM_CATALOG"} {
 		if !isReadOnly(jobType) {
 			t.Errorf("%s should be read-only", jobType)
 		}

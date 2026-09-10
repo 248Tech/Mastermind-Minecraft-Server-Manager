@@ -3,16 +3,12 @@ import { JwtService } from '@nestjs/jwt';
 import { DUMMY_PASSWORD_HASH, makePasswordHash, verifyPassword } from '../auth/auth.service';
 import { stripeCheckoutEnabledForOrg } from '../donations/donations.credentials';
 import { PrismaService } from '../prisma.service';
-import { PrismaCoreService } from '../prismacore/prismacore.service';
 import { JobsService } from '../jobs/jobs.service';
-import { VehiclesService } from '../vehicles/vehicles.service';
-import { describeVehicle } from '../vehicles/vehicle-catalog';
 import { randomUUID } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { parsePortalPassword, parsePortalPlayerName, parseShopReturnPath } from './player-auth.names';
-import { emptyPlayerPlaces, filterPlayerPlaces } from './player-places';
-import { PoiCatalogService } from '../poi-catalog/poi-catalog.service';
+import { emptyPlayerPlaces } from './player-places';
 
 const STEAM_OPENID = 'https://steamcommunity.com/openid/login';
 const CLAIMED_ID = /^https?:\/\/steamcommunity\.com\/openid\/id\/(7656119\d{10})$/;
@@ -42,10 +38,7 @@ export class PlayerAuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
-    private readonly prismaCore: PrismaCoreService,
     private readonly jobs: JobsService,
-    private readonly vehicles: VehiclesService,
-    private readonly poiCatalog: PoiCatalogService,
   ) {}
 
   async verifySteam(serverInstanceId: string, returnTo: string, openid: Record<string, unknown>) {
@@ -102,12 +95,16 @@ export class PlayerAuthService {
 
   async shopStatus() {
     const server = await this.portalServer();
-    const live = await this.prismaCore.shopLive();
+    const online = await this.prisma.player.count({ where: { serverInstanceId: server.id, online: true } });
+    const host = await this.prisma.serverInstance.findFirst({
+      where: { id: server.id },
+      select: { host: { select: { status: true, lastHeartbeatAt: true } } },
+    });
     return {
       serverName: server.name,
       checkoutEnabled: await stripeCheckoutEnabledForOrg(this.prisma, server.orgId),
-      serverReachable: live.serverReachable,
-      playersOnline: live.playersOnline,
+      serverReachable: host?.host ? hostLooksOnline(host.host) : false,
+      playersOnline: online,
     };
   }
 
@@ -263,7 +260,7 @@ export class PlayerAuthService {
         currentSessionStartedAt: true, firstSeenAt: true, lastSeenAt: true, lastLogoutAt: true,
         lastPosX: true, lastPosY: true, lastPosZ: true, lastInventory: true, lastInventoryAt: true,
         supporter: true, supporterSince: true, totalDonatedCents: true, portalPasswordHash: true,
-        serverInstance: { select: { name: true } },
+        serverInstance: { select: { name: true, mapEmbedUrl: true } },
       },
     });
     if (!player) throw new UnauthorizedException('Player no longer registered');
@@ -292,6 +289,7 @@ export class PlayerAuthService {
         isAdmin,
         serverInstanceId: player.serverInstanceId,
         serverName: player.serverInstance.name,
+        mapEmbedUrl: player.serverInstance.mapEmbedUrl ?? null,
         donation: {
           status: player.supporter ? 'supporter' : 'ready',
           tiedTo: 'name',
@@ -323,6 +321,7 @@ export class PlayerAuthService {
       isAdmin,
       serverInstanceId: player.serverInstanceId,
       serverName: player.serverInstance.name,
+      mapEmbedUrl: player.serverInstance.mapEmbedUrl ?? null,
       stats: {
         level: player.level,
         zombieKills: player.zombieKills,
@@ -382,28 +381,13 @@ export class PlayerAuthService {
 
   async portalPOIs(token: string) {
     const player = await this.requirePlayer(token);
-    const isAdmin = await this.isPortalAdmin(player.orgId, player.name);
-    if (!player.supporter && !isAdmin) throw new ForbiddenException('POI search is available to supporters and administrators');
     const server = await this.portalServer();
     if (server.orgId !== player.orgId) throw new ForbiddenException('Player portal server is unavailable');
-    let result = await this.poiCatalog.latest(player.orgId, server.id);
-    if (!result.indexedAt) {
-      const queued = await this.jobs.enqueueInternalJob(player.orgId, null, server.id, 'POI_CATALOG');
-      await this.waitForPortalJobData(queued.jobRunId);
-      result = await this.poiCatalog.latest(player.orgId, server.id);
-    }
-    return { serverName: server.name, indexedAt: result.indexedAt, ...result.catalog };
+    return { serverName: server.name, indexedAt: null, pois: [], truncated: false };
   }
 
-  async portalPOIPreview(token: string, name: string) {
-    const player = await this.requirePlayer(token);
-    const isAdmin = await this.isPortalAdmin(player.orgId, player.name);
-    if (!player.supporter && !isAdmin) throw new ForbiddenException('POI search is available to supporters and administrators');
-    const server = await this.portalServer();
-    if (server.orgId !== player.orgId) throw new ForbiddenException('Player portal server is unavailable');
-    const queued = await this.jobs.enqueueInternalJob(player.orgId, null, server.id, 'POI_PREVIEW', { name });
-    const data = await this.waitForPortalJobData(queued.jobRunId);
-    return data && typeof data === 'object' ? data : { name, available: false };
+  async portalPOIPreview(_token: string, name: string) {
+    return { name, available: false };
   }
 
   async requestMod(token: string, file: { originalname: string; size: number; buffer: Buffer } | undefined, description: unknown) {
@@ -456,48 +440,11 @@ export class PlayerAuthService {
 
   async places(token: string) {
     const player = await this.requirePlayer(token);
-    if (player.sessionAuth === 'name') return emptyPlayerPlaces('name');
-    const [claimsLayer, homesLayer, vehiclesLayer, dronesLayer] = await Promise.all([
-      this.prismaCore.layer('landclaims'),
-      this.prismaCore.layer('playerhomes'),
-      this.prismaCore.layer('vehicles'),
-      this.prismaCore.layer('drones'),
-    ]);
-    const claims = claimsLayer as { reachable?: boolean; claims?: unknown[] };
-    const homes = homesLayer as { reachable?: boolean; homes?: unknown[] };
-    const vehicles = vehiclesLayer as { reachable?: boolean; markers?: unknown[] };
-    const drones = dronesLayer as { reachable?: boolean; markers?: unknown[] };
-    const filtered = filterPlayerPlaces({
-      reachable: Boolean(claims.reachable || homes.reachable || vehicles.reachable || drones.reachable),
-      claims: Array.isArray(claims.claims) ? claims.claims as Array<{ steamId?: unknown; eosId?: unknown; extra?: unknown; position?: { x: number; y: number; z: number }; size?: number }> : [],
-      homes: Array.isArray(homes.homes) ? homes.homes as Array<{ steamId?: unknown; eosId?: unknown; extra?: unknown; position?: { x: number; y: number; z: number }; active?: boolean }> : [],
-      vehicles: Array.isArray(vehicles.markers) ? vehicles.markers as Array<{ steamId?: unknown; eosId?: unknown; extra?: unknown; name?: string; position?: { x: number; y: number; z: number } }> : [],
-      drones: Array.isArray(drones.markers) ? drones.markers as Array<{ steamId?: unknown; eosId?: unknown; extra?: unknown; name?: string; position?: { x: number; y: number; z: number } }> : [],
-    }, { steamId: player.steamId, eosId: player.eosId });
-    const live = filtered.vehicles.map((row) => {
-      const spec = describeVehicle(row.name);
-      return {
-        ...row,
-        vehicleKey: spec?.key ?? 'unknown',
-        name: spec?.label ?? row.name,
-        live: true,
-      };
-    });
-    await this.vehicles.captureServerVehicles(player.serverInstanceId).catch(() => undefined);
-    const recent = await this.vehicles.historyForPlayer(player.id, live);
-    return { ...filtered, vehicles: [...live, ...recent] };
+    // Minecraft portals use BlueMap/Dynmap embeds; land/home layers are unused.
+    return emptyPlayerPlaces(player.sessionAuth, false);
   }
 
-  async returnVehicle(token: string, vehicleKey: string) {
-    const player = await this.requirePlayer(token);
-    if (player.sessionAuth !== 'steam') throw new BadRequestException('Sign in with Steam to return a vehicle');
-    return this.vehicles.returnVehicle({
-      id: player.id,
-      orgId: player.orgId,
-      serverInstanceId: player.serverInstanceId,
-      steamId: player.steamId,
-      entityId: player.entityId,
-      online: player.online,
-    }, vehicleKey);
+  async returnVehicle(_token: string, _vehicleKey: string) {
+    throw new BadRequestException('Vehicle return is not available for Minecraft');
   }
 }

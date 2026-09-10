@@ -10,11 +10,10 @@ import {
   Matches,
 } from 'class-validator';
 
-const GAME_TYPE_7DTD = '7dtd';
 const GAME_TYPE_MINECRAFT = 'minecraft';
 
 /** Supported game type slugs (resolved to gameTypeId). */
-export const SUPPORTED_GAME_TYPES = [GAME_TYPE_7DTD, GAME_TYPE_MINECRAFT] as const;
+export const SUPPORTED_GAME_TYPES = [GAME_TYPE_MINECRAFT] as const;
 
 export class CreateServerInstanceDto {
   @IsString()
@@ -27,11 +26,11 @@ export class CreateServerInstanceDto {
   @IsNotEmpty()
   hostId: string;
 
-  /** Game type slug: "7dtd" or "minecraft". Stored as gameTypeId (resolved from slug). */
+  /** Game type slug. Stored as gameTypeId (resolved from slug). */
   @IsString()
   @IsNotEmpty()
-  @Matches(/^(7dtd|minecraft)$/i, { message: 'gameType must be 7dtd or minecraft' })
-  gameType: string = GAME_TYPE_7DTD;
+  @Matches(/^minecraft$/i, { message: 'gameType must be minecraft' })
+  gameType: string = GAME_TYPE_MINECRAFT;
 
   @IsOptional()
   @IsString()
@@ -59,4 +58,9 @@ export class CreateServerInstanceDto {
   @IsString()
   @MaxLength(256)
   telnetPassword?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  mapEmbedUrl?: string;
 }

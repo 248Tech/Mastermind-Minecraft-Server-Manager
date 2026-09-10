@@ -1,7 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { JobsService } from '../jobs/jobs.service';
-import { AllocsService } from '../allocs/allocs.service';
 import { reconcileNameFallback } from './player-identity';
 
 @Injectable()
@@ -11,7 +10,6 @@ export class PlayersService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
-    private readonly allocs: AllocsService,
   ) {}
   onModuleInit() {
     const seconds = Math.max(15, Number(process.env.PLAYER_POLL_INTERVAL_SEC || 60));
@@ -24,34 +22,13 @@ export class PlayersService implements OnModuleInit, OnModuleDestroy {
     this.polling = true;
     try {
       const servers = await this.prisma.serverInstance.findMany({
-        where: { gameType: { slug: '7dtd' } }, select: { id: true, orgId: true, host: { select: { lastMetrics: true } } },
+        where: { gameType: { slug: 'minecraft' } }, select: { id: true, orgId: true, host: { select: { lastMetrics: true } } },
       });
       for (const server of servers) {
         const metrics = (server.host.lastMetrics ?? {}) as Record<string, unknown>;
         if (metrics.gameReachable !== true) continue;
         const member = await this.prisma.userOrg.findFirst({ where: { orgId: server.orgId }, orderBy: { createdAt: 'asc' }, select: { userId: true } });
         if (!member) continue;
-        const allocsSync = await this.jobs.trySyncPlayersFromAllocs(server.orgId, server.id);
-        if (allocsSync) {
-          const missingPos = await this.prisma.player.count({
-            where: {
-              serverInstanceId: server.id,
-              online: true,
-              OR: [{ lastPosX: null }, { lastPosZ: null }],
-            },
-          });
-          if (allocsSync.needsLpStats || missingPos > 0) {
-            const recent = await this.prisma.job.findFirst({
-              where: {
-                serverInstanceId: server.id,
-                type: 'PLAYER_LIST_SYNC',
-                createdAt: { gte: new Date(Date.now() - 45_000) },
-              },
-            });
-            if (!recent) await this.jobs.createJob(server.orgId, member.userId, server.id, 'PLAYER_LIST_SYNC', {});
-          }
-          continue;
-        }
         const recent = await this.prisma.job.findFirst({ where: { serverInstanceId: server.id, type: 'PLAYER_LIST_SYNC', createdAt: { gte: new Date(Date.now() - 45_000) } } });
         if (!recent) await this.jobs.createJob(server.orgId, member.userId, server.id, 'PLAYER_LIST_SYNC', {});
       }
@@ -94,17 +71,9 @@ export class PlayersService implements OnModuleInit, OnModuleDestroy {
   async inventory(orgId: string, playerId: string) {
     const player = await this.prisma.player.findFirst({
       where: { id: playerId, orgId },
-      select: { id: true, name: true, steamId: true, eosId: true },
+      select: { id: true, name: true },
     });
     if (!player) throw new NotFoundException('Player not found');
-    if (!player.steamId && !player.eosId) {
-      throw new BadRequestException('Steam or EOS ID is required to read inventory');
-    }
-    if (!this.allocs.tokenConfigured()) {
-      throw new ServiceUnavailableException('Allocs webtoken is not configured');
-    }
-    const snapshot = await this.allocs.inventorySnapshot(player.steamId, player.eosId);
-    if (!snapshot) throw new ServiceUnavailableException('Player inventory is unavailable');
-    return { player: player.name, source: 'allocs', snapshot };
+    throw new BadRequestException('Live inventory is not available for Minecraft servers yet');
   }
 }

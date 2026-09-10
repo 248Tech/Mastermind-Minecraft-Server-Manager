@@ -4,21 +4,17 @@ import { PrismaService } from '../prisma.service';
 import { JobsService } from '../jobs/jobs.service';
 import {
   TRIGGER_ACTION_GRANT_ITEMS,
-  TRIGGER_ACTION_LAND_CLAIM,
   TRIGGER_ACTIONS,
   TRIGGER_EVENT_PLAYER_LEVEL,
   TRIGGER_EVENTS,
   eventKeyForLevel,
   grantItemsSummary,
   parseGrantItemsActionConfig,
-  parseLandClaimActionConfig,
   parsePlayerLevelConfig,
   playerReachedLevel,
   type GrantItemsActionConfig,
-  type LandClaimActionConfig,
   type PlayerLevelConfig,
 } from './catalog';
-import { donatedBonusClaims, stackedClaimCount } from './donated-claims';
 import { classifyGrantOutput } from '../donations/shop-grants';
 
 export type TriggerInput = {
@@ -125,22 +121,6 @@ export class TriggersService {
     }
   }
 
-  async refreshLandClaims(playerId: string) {
-    const player = await this.prisma.player.findUnique({
-      where: { id: playerId },
-      select: { id: true, name: true, steamId: true, eosId: true, entityId: true, level: true },
-    });
-    if (!player) return;
-    const fires = await this.prisma.triggerFire.findMany({
-      where: { playerId, trigger: { enabled: true, actionType: TRIGGER_ACTION_LAND_CLAIM } },
-      include: { trigger: true },
-    });
-    for (const fire of fires) {
-      const event = parsePlayerLevelConfig(fire.trigger.eventConfig);
-      await this.enqueueLandClaim(fire.trigger, player, event.level, false).catch(() => undefined);
-    }
-  }
-
   async applyToExistingPlayers(triggerId: string) {
     const trigger = await this.prisma.trigger.findUnique({ where: { id: triggerId } });
     if (!trigger || !trigger.enabled) return;
@@ -176,19 +156,6 @@ export class TriggersService {
       const event = parsePlayerLevelConfig(fire.trigger.eventConfig);
       await this.enqueueGrantItems(fire.trigger, fire.player, event.level, false).catch(() => undefined);
     }
-    const claimFires = await this.prisma.triggerFire.findMany({
-      where: {
-        status: { in: ['pending', 'failed'] },
-        trigger: { orgId, serverInstanceId, enabled: true, actionType: TRIGGER_ACTION_LAND_CLAIM },
-        player: { online: true },
-      },
-      include: { trigger: true, player: { select: { id: true, name: true, steamId: true, eosId: true, entityId: true, level: true } } },
-      take: 32,
-    });
-    for (const fire of claimFires) {
-      const event = parsePlayerLevelConfig(fire.trigger.eventConfig);
-      await this.enqueueLandClaim(fire.trigger, fire.player, event.level, false).catch(() => undefined);
-    }
   }
 
   async retryPendingItemGrantsForPlayer(playerId: string) {
@@ -214,10 +181,6 @@ export class TriggersService {
   ) {
     if (trigger.actionType === TRIGGER_ACTION_GRANT_ITEMS) {
       await this.fireGrantItems(trigger.id, player, level);
-      return;
-    }
-    if (trigger.actionType === TRIGGER_ACTION_LAND_CLAIM) {
-      await this.fireLandClaim(trigger.id, player, level);
     }
   }
 
@@ -292,95 +255,18 @@ export class TriggersService {
     }
   }
 
-  private async fireLandClaim(
-    triggerId: string,
-    player: { id: string; name: string; steamId: string | null; eosId: string | null; entityId: number | null; level: number },
-    level: number,
-  ) {
-    const trigger = await this.prisma.trigger.findUnique({ where: { id: triggerId } });
-    if (!trigger) return;
-    await this.enqueueLandClaim(trigger, player, level, true);
-  }
-
-  private async accumulatedTriggerClaimBonus(playerId: string): Promise<number> {
-    const fires = await this.prisma.triggerFire.findMany({
-      where: { playerId, trigger: { actionType: TRIGGER_ACTION_LAND_CLAIM } },
-      include: { trigger: true },
-    });
-    let total = 0;
-    const seen = new Set<string>();
-    for (const fire of fires) {
-      const key = `${fire.triggerId}:${fire.eventKey}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      total += parseLandClaimActionConfig(fire.trigger.actionConfig).claimCount;
-    }
-    return total;
-  }
-
-  private async enqueueLandClaim(
-    trigger: { id: string; orgId: string; serverInstanceId: string; createdById: string | null; actionConfig: unknown },
-    player: { id: string; name: string; steamId: string | null; eosId: string | null; entityId: number | null; level: number },
-    level: number,
-    recordFire: boolean,
-  ) {
-    const action = parseLandClaimActionConfig(trigger.actionConfig);
-    const donated = await donatedBonusClaims(this.prisma, player.id);
-    const eventKey = eventKeyForLevel(level);
-    if (recordFire) {
-      try {
-        await this.prisma.triggerFire.create({
-          data: { triggerId: trigger.id, playerId: player.id, eventKey, status: player.steamId || player.eosId ? 'queued' : 'pending' },
-        });
-      } catch {
-        return;
-      }
-    }
-    const triggerBonus = await this.accumulatedTriggerClaimBonus(player.id);
-    const bonusClaims = stackedClaimCount(triggerBonus, donated);
-    if (!player.steamId && !player.eosId) {
-      return;
-    }
-    const queued = await this.jobs.enqueueInternalJob(trigger.orgId, trigger.createdById, trigger.serverInstanceId, 'TRIGGER_LAND_CLAIM', {
-      triggerId: trigger.id,
-      playerId: player.id,
-      steamId: player.steamId,
-      eosId: player.eosId,
-      entityId: player.entityId,
-      name: player.name,
-      bonusClaims,
-      donatedClaims: donated,
-      notifyPlayer: recordFire && action.notifyPlayer,
-      message: action.message
-        .replaceAll('{name}', player.name)
-        .replaceAll('{level}', String(player.level)),
-    });
-    if (recordFire) {
-      await this.prisma.triggerFire.update({
-        where: { triggerId_playerId_eventKey: { triggerId: trigger.id, playerId: player.id, eventKey } },
-        data: { jobId: queued.jobId, status: 'queued' },
-      });
-      await this.prisma.trigger.update({
-        where: { id: trigger.id },
-        data: { lastFiredAt: new Date(), fireCount: { increment: 1 } },
-      });
-    }
-  }
-
   private validatedData(input: TriggerInput) {
     const name = input.name?.trim();
     if (!name || name.length > 80) throw new BadRequestException('Name is required (max 80 characters)');
     if (input.eventType !== TRIGGER_EVENT_PLAYER_LEVEL) throw new BadRequestException('Unsupported trigger event');
-    if (input.actionType !== TRIGGER_ACTION_LAND_CLAIM && input.actionType !== TRIGGER_ACTION_GRANT_ITEMS) {
+    if (input.actionType !== TRIGGER_ACTION_GRANT_ITEMS) {
       throw new BadRequestException('Unsupported trigger action');
     }
     let eventConfig: PlayerLevelConfig;
-    let actionConfig: LandClaimActionConfig | GrantItemsActionConfig;
+    let actionConfig: GrantItemsActionConfig;
     try {
       eventConfig = parsePlayerLevelConfig(input.eventConfig);
-      actionConfig = input.actionType === TRIGGER_ACTION_GRANT_ITEMS
-        ? parseGrantItemsActionConfig(input.actionConfig)
-        : parseLandClaimActionConfig(input.actionConfig);
+      actionConfig = parseGrantItemsActionConfig(input.actionConfig);
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Invalid trigger configuration');
     }

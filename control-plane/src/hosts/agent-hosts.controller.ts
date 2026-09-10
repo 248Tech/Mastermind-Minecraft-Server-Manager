@@ -10,7 +10,7 @@ class HeartbeatDto {
   metrics?: HeartbeatMetrics;
 }
 
-class Discover7DtdServerDto {
+class DiscoverMinecraftServerDto {
   @IsOptional()
   @IsString()
   name?: string;
@@ -71,14 +71,14 @@ export class AgentHostsController {
     return { ok: true };
   }
 
-  @Post(':hostId/server-instances/discover/7dtd')
+  @Post(':hostId/server-instances/discover/minecraft')
   @UseGuards(AgentAuthGuard)
-  async discover7dtd(
+  async discoverMinecraft(
     @Param('hostId') _pathHostId: string,
-    @Body() dto: Discover7DtdServerDto,
+    @Body() dto: DiscoverMinecraftServerDto,
     @Req() req: RequestWithAgent,
   ) {
     const hostId = req.agentHostId!;
-    return this.serverInstancesService.upsertDiscovered7DtdInstance(hostId, dto);
+    return this.serverInstancesService.upsertDiscoveredMinecraftInstance(hostId, dto);
   }
 }

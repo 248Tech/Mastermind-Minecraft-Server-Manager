@@ -18,6 +18,7 @@ const NAV_GROUPS = [
     { href: '/saves', label: 'Worlds', icon: '▣', title: 'Back up, restore, and manage world folders' },
     { href: '/logs', label: 'Logs', icon: '≡', title: 'Live and recorded server logs (latest.log)' },
     { href: '/chat', label: 'Chat', icon: '💬', title: 'Player chat history and Discord relay' },
+    { href: '/live-map', label: 'Live Map', icon: '⌖', title: 'Embedded BlueMap / Dynmap / Squaremap' },
     { href: '/donator-shop', label: 'Donator Shop', icon: '♡', title: 'Create supporter packages and optional In-Game Gifts for the player portal' },
     { href: '/purchases', label: 'Donations', icon: '$', title: 'Completed player donations and In-Game Gift delivery' },
   ]},
@@ -112,8 +113,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     if (!orgId) return;
     const loadServers=()=>api.get<{id:string;name:string;gameType:string}[]>(`/api/orgs/${orgId}/server-instances`).then(rows=>{
       if(!active)return;
-      const preferred=rows.filter(row=>row.gameType?.toLowerCase()==='minecraft');
-      const gameServers=preferred.length?preferred:rows;
+      const gameServers=rows.filter(row=>row.gameType==='minecraft');
       setServers(gameServers);
       const selected=gameServers.find(row=>row.id===getStoredServerId())||gameServers[0];
       if(selected){setServerId(selected.id);if(selected.id!==getStoredServerId())setStoredServerId(selected.id);}
@@ -164,10 +164,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <img src="/mastermind-logo.png" alt="Mastermind" style={{width:40,height:40,objectFit:'cover',objectPosition:'center 42%',borderRadius:8,boxShadow:'0 0 16px rgba(249,115,22,.35)'}} />
                 <div className="nav-label">
                   <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#f1f5f9', lineHeight: 1.2 }}>Mastermind</div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b', lineHeight: 1.2 }}>7DTD Manager</div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b', lineHeight: 1.2 }}>Minecraft Manager</div>
                 </div>
               </div>
-              <label style={{display:'block',marginTop:12,color:'#64748b',fontSize:'.68rem',letterSpacing:'.05em',textTransform:'uppercase'}}>Active server<select aria-label="Active server" value={serverId} onChange={event=>{setServerId(event.target.value);setStoredServerId(event.target.value);}} disabled={!servers.length} style={{display:'block',width:'100%',marginTop:5,background:'#111118',color:'#e2e8f0',border:'1px solid #252532',borderRadius:6,padding:'.45rem',fontSize:'.78rem'}}><option value="">{servers.length?'Select server':'No 7DTD servers'}</option>{servers.map(server=><option key={server.id} value={server.id}>{server.name}</option>)}</select></label>
+              <label style={{display:'block',marginTop:12,color:'#64748b',fontSize:'.68rem',letterSpacing:'.05em',textTransform:'uppercase'}}>Active server<select aria-label="Active server" value={serverId} onChange={event=>{setServerId(event.target.value);setStoredServerId(event.target.value);}} disabled={!servers.length} style={{display:'block',width:'100%',marginTop:5,background:'#111118',color:'#e2e8f0',border:'1px solid #252532',borderRadius:6,padding:'.45rem',fontSize:'.78rem'}}><option value="">{servers.length?'Select server':'No Minecraft servers'}</option>{servers.map(server=><option key={server.id} value={server.id}>{server.name}</option>)}</select></label>
             </div>
 
             {/* Nav items */}

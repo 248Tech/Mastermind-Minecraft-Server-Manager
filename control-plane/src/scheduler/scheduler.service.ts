@@ -95,7 +95,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     const orgId = schedule.orgId;
     const serverInstanceId = schedule.serverInstanceId;
     const effectiveJobType =
-      schedule.serverInstance.gameType.slug === '7dtd' && schedule.jobType.toUpperCase() === 'SERVER_RESTART'
+      schedule.serverInstance.gameType.slug === 'minecraft' && schedule.jobType.toUpperCase() === 'SERVER_RESTART'
         ? 'SERVER_SAFE_RESTART'
         : schedule.jobType;
 
@@ -135,7 +135,6 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       telnet_port: schedule.serverInstance.telnetPort ?? undefined,
       telnet_password: schedule.serverInstance.telnetPassword ?? undefined,
       config: schedule.serverInstance.config ?? undefined,
-      avoid_blood_moon_restart: schedule.serverInstance.org.avoidBloodMoonRestart,
       schedule_id: schedule.id,
       ...configuredPayload,
     };

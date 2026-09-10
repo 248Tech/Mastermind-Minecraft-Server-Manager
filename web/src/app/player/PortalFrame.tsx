@@ -49,7 +49,7 @@ export function PortalFrame({
           <NavLink href="/player/shop" current={path.startsWith('/player/shop')}>Shop</NavLink>
           <CartNavLink current={path.startsWith('/player/shop/cart')} />
           <NavLink href="/player/map" current={path.startsWith('/player/map')}>Map</NavLink>
-          {(profile?.isAdmin || profile?.donation?.supporter) && <NavLink href="/player/pois" current={path.startsWith('/player/pois')}>POIs</NavLink>}
+          {(profile?.isAdmin || profile?.donation?.supporter) && <NavLink href="/player/mods" current={path.startsWith('/player/mods')}>Mods</NavLink>}
           {signedIn && (
             <button
               onClick={() => fetch('/api/player-auth/logout', { method: 'POST' }).then(() => { location.href = '/player'; })}

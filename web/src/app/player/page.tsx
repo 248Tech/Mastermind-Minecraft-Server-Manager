@@ -73,7 +73,6 @@ function PlayerPortalContent() {
             <a href="/player/shop" style={primary}>Donate</a>
             <a href="/player/map" style={primary}>Open live map</a>
             {canBrowseMods && <a href="/player/mods" style={primary}>View / download mods</a>}
-            {canBrowseMods && <a href="/player/pois" style={primary}>Search POIs</a>}
             <details style={requestBox}>
               <summary style={{ cursor: 'pointer', color: '#fed7aa', fontWeight: 700 }}>Request a mod</summary>
               <p style={helpText}>Recommend a ZIP mod for staff review. Your verified in-game name is recorded with the request.</p>

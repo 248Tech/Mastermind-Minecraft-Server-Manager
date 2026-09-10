@@ -30,20 +30,7 @@ const GAME_TYPES = [
       'ban_player',
       'get_log_path',
       'install_mod',
-    ],
-  },
-  {
-    slug: '7dtd',
-    name: '7 Days to Die',
-    capabilities: [
-      'start',
-      'stop',
-      'restart',
-      'status',
-      'send_command',
-      'kick_player',
-      'ban_player',
-      'get_log_path',
+      'stream_chat',
     ],
   },
 ];

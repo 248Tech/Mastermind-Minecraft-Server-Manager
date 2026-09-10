@@ -7,10 +7,9 @@ import { PlayersService } from './players.service';
 import { JobsModule } from '../jobs/jobs.module';
 import { ServerToolsController } from './server-tools.controller';
 import { RequireOrgRoleGuard } from '../server-instances/guards/require-org-role.guard';
-import { AllocsModule } from '../allocs/allocs.module';
 
 @Module({
-  imports: [JwtModule.register({ secret: process.env.JWT_SECRET || 'change-me-user-secret' }), JobsModule, AllocsModule],
+  imports: [JwtModule.register({ secret: process.env.JWT_SECRET || 'change-me-user-secret' }), JobsModule],
   controllers: [PlayersController, ServerToolsController], providers: [PlayersService, PrismaService, OrgMemberGuard, RequireOrgRoleGuard],
 })
 export class PlayersModule {}

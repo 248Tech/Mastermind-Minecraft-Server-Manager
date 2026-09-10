@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0] - 2026-09-10
+
+### Removed
+
+- Retired the entire **7 Days to Die** stack: agent `7dtd` adapter/discovery, Allocs/PrismaCore/POI/vehicles control-plane modules, profile editor / region healer / POI search UI, Allocs tile map APIs, item-icon proxies, telnet-relay, and related infra/integration scripts.
+
+### Added
+
+- Minecraft agent parity jobs: mod quarantine/pending, world save list/restore/retention, maintenance mode, pack `update_command`, `ops.json` admin list, `TRIGGER_GRANT_ITEMS`, log chat stream.
+- Live Map as BlueMap/Dynmap/Squaremap **embed URL** (`mapEmbedUrl` on server instances).
+- Shop/trigger grants via RCON `give <player> <item> <count>`; Minecraft join/leave/chat log parsers; UUID/name roster polling.
+
+### Changed
+
+- Product is **Minecraft-only**. Discovery, job types, triggers (grant items), and Docker Compose no longer wire 7DTD services or env vars.
+- Server instance `gameType` defaults to and validates as `minecraft`.
+
 ## [0.1.0] - 2026-09-10
 
 ### Added

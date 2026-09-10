@@ -220,6 +220,7 @@ model ServerInstance {
   telnetPassword  String?  @map("telnet_password")
   maintenanceMode Boolean  @default(false) @map("maintenance_mode")
   rebootIfDown    Boolean  @default(false) @map("reboot_if_down")
+  mapEmbedUrl     String?  @map("map_embed_url")
   config          Json?    // game-adapter-specific config
   port            Int?
   createdAt       DateTime @default(now()) @map("created_at")

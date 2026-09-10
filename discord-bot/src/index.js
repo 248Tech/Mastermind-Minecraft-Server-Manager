@@ -81,7 +81,7 @@ async function authenticate() {
   session = { token: login.access_token, orgId: config.orgId || login.orgId, serverId: config.serverId };
   if (!session.serverId) {
     const servers = await api(`/api/orgs/${encodeURIComponent(session.orgId)}/server-instances`);
-    const server = servers.find(item => item.gameType === '7dtd') || servers[0];
+    const server = servers.find(item => item.gameType === 'minecraft') || servers[0];
     if (!server) throw new Error('No Mastermind server instance is registered');
     session.serverId = server.id;
   }

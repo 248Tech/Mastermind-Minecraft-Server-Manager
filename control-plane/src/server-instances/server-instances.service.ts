@@ -8,13 +8,13 @@ import { PrismaService } from '../prisma.service';
 import { CreateServerInstanceDto } from './dto/create-server-instance.dto';
 import { UpdateServerInstanceDto } from './dto/update-server-instance.dto';
 
-const GAME_TYPE_SLUG_7DTD = '7dtd';
+const GAME_TYPE_SLUG_MINECRAFT = 'minecraft';
 
 @Injectable()
 export class ServerInstancesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Resolve game type id from slug (e.g. 7dtd, minecraft). */
+  /** Resolve game type id from slug (e.g. minecraft). */
   private async getGameTypeIdBySlug(slug: string): Promise<string> {
     const gt = await this.prisma.gameType.findFirst({
       where: { slug: slug.toLowerCase() },
@@ -27,8 +27,8 @@ export class ServerInstancesService {
     return gt.id;
   }
 
-  private async get7DtdGameTypeId(): Promise<string> {
-    return this.getGameTypeIdBySlug(GAME_TYPE_SLUG_7DTD);
+  private async getMinecraftGameTypeId(): Promise<string> {
+    return this.getGameTypeIdBySlug(GAME_TYPE_SLUG_MINECRAFT);
   }
 
   /** Resolve host belongs to org (single-host MVP). */
@@ -81,6 +81,7 @@ export class ServerInstancesService {
         telnetHost: dto.telnetHost?.trim() || null,
         telnetPort: dto.telnetPort ?? null,
         telnetPassword: dto.telnetPassword ?? null,
+        mapEmbedUrl: dto.mapEmbedUrl?.trim() || null,
       },
       include: { host: true, gameType: { select: { slug: true, capabilities: true } } },
     });
@@ -94,7 +95,7 @@ export class ServerInstancesService {
     return this.toResponse(created, true);
   }
 
-  async upsertDiscovered7DtdInstance(
+  async upsertDiscoveredMinecraftInstance(
     hostId: string,
     dto: {
       name?: string;
@@ -114,7 +115,7 @@ export class ServerInstancesService {
       throw new NotFoundException('Host not found');
     }
 
-    const gameTypeId = await this.get7DtdGameTypeId();
+    const gameTypeId = await this.getMinecraftGameTypeId();
     const existingList = await this.prisma.serverInstance.findMany({
       where: { orgId: host.orgId, hostId, gameTypeId },
       orderBy: { createdAt: 'asc' },
@@ -133,11 +134,11 @@ export class ServerInstancesService {
           orgId: host.orgId,
           hostId,
           gameTypeId,
-          name: dto.name?.trim() || `${host.name} 7DTD`,
+          name: dto.name?.trim() || `${host.name} Minecraft`,
           installPath,
           startCommand: dto.startCommand?.trim() || null,
           telnetHost: dto.telnetHost?.trim() || '127.0.0.1',
-          telnetPort: dto.telnetPort ?? 8081,
+          telnetPort: dto.telnetPort ?? 25575,
           telnetPassword: dto.telnetPassword ?? null,
           config: discoveryConfig as Prisma.InputJsonValue,
         },
@@ -199,6 +200,7 @@ export class ServerInstancesService {
         ...(dto.telnetPort !== undefined && { telnetPort: dto.telnetPort ?? null }),
         ...(dto.telnetPassword !== undefined && { telnetPassword: dto.telnetPassword ?? null }),
         ...(dto.rebootIfDown !== undefined && { rebootIfDown: dto.rebootIfDown }),
+        ...(dto.mapEmbedUrl !== undefined && { mapEmbedUrl: dto.mapEmbedUrl?.trim() || null }),
       },
       include: { host: true, gameType: { select: { slug: true, capabilities: true } } },
     });
@@ -237,6 +239,7 @@ export class ServerInstancesService {
       telnetPassword: string | null;
       maintenanceMode?: boolean;
       rebootIfDown?: boolean;
+      mapEmbedUrl?: string | null;
       createdAt: Date;
       updatedAt: Date;
       gameType?: { slug: string; capabilities: unknown };
@@ -251,7 +254,7 @@ export class ServerInstancesService {
       orgId: row.orgId,
       hostId: row.hostId,
       gameTypeId: row.gameTypeId,
-      gameType: row.gameType?.slug ?? '7dtd',
+      gameType: row.gameType?.slug ?? 'minecraft',
       capabilities,
       name: row.name,
       installPath: row.installPath,
@@ -260,6 +263,7 @@ export class ServerInstancesService {
       telnetPort: row.telnetPort,
       maintenanceMode: Boolean((row as { maintenanceMode?: boolean }).maintenanceMode),
       rebootIfDown: Boolean((row as { rebootIfDown?: boolean }).rebootIfDown),
+      mapEmbedUrl: row.mapEmbedUrl ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
