@@ -3,7 +3,7 @@
 As of 2026-08-20. Older design docs may still mention Tailwind/shadcn; the live web UI uses Next.js App Router and inline styles.
 
 ```
-Mastermind-7DTD-AI-Server-Manager/
+Mastermind-Minecraft-Server-Manager/
 ├── control-plane/                 # NestJS API
 │   └── src/
 │       ├── app.module.ts

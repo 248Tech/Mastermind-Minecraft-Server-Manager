@@ -1,6 +1,6 @@
-# Mastermind — Quickstart Guide
+# Mastermind — Minecraft Server Manager Quickstart
 
-A distributed game server manager with a NestJS control plane, Next.js web UI, and Go agent binary. Supports 7 Days to Die and Minecraft.
+A distributed game server manager with a NestJS control plane, Next.js web UI, and Go agent binary. **Minecraft-first** (Java / NeoForge / Fabric / Paper), with a legacy 7DTD adapter still present in the agent.
 
 ---
 
@@ -18,7 +18,7 @@ A distributed game server manager with a NestJS control plane, Next.js web UI, a
 ## Option 0 — One command (recommended for v0.0.3)
 
 ```bash
-git clone <repo-url> && cd Mastermind-7DTD-AI-Server-Manager
+git clone https://github.com/248Tech/Mastermind-Minecraft-Server-Manager && cd Mastermind-Minecraft-Server-Manager
 make start
 ```
 
@@ -34,7 +34,7 @@ All services in containers, no local Node/Go required.
 
 ```bash
 # 1. Clone & enter
-git clone <repo-url> && cd Mastermind-7DTD-AI-Server-Manager
+git clone https://github.com/248Tech/Mastermind-Minecraft-Server-Manager && cd Mastermind-Minecraft-Server-Manager
 
 # 2. Copy env and choose the first administrator
 cp infra/.env.example infra/.env

@@ -18,6 +18,21 @@ function makePasswordHash(password: string): string {
 
 const GAME_TYPES = [
   {
+    slug: 'minecraft',
+    name: 'Minecraft',
+    capabilities: [
+      'start',
+      'stop',
+      'restart',
+      'status',
+      'send_command',
+      'kick_player',
+      'ban_player',
+      'get_log_path',
+      'install_mod',
+    ],
+  },
+  {
     slug: '7dtd',
     name: '7 Days to Die',
     capabilities: [
@@ -29,19 +44,6 @@ const GAME_TYPES = [
       'kick_player',
       'ban_player',
       'get_log_path',
-    ],
-  },
-  {
-    slug: 'minecraft',
-    name: 'Minecraft',
-    capabilities: [
-      'start',
-      'stop',
-      'restart',
-      'status',
-      'send_command',
-      'kick_player',
-      'ban_player',
     ],
   },
 ];

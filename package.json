@@ -1,8 +1,8 @@
 {
-  "name": "mastermind-7dtd-ai-server-manager",
-  "version": "0.0.15",
+  "name": "mastermind-minecraft-server-manager",
+  "version": "0.1.0",
   "private": true,
-  "description": "Control Plane + Host Agent for 7DTD server management",
+  "description": "Control Plane + Host Agent for Minecraft server management",
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
     "build": "pnpm -r run build",

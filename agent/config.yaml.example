@@ -28,13 +28,18 @@ host:
   name: ""   # optional; control plane may set display name
 
 discovery:
-  enabled: false
+  enabled: true
+  minecraft:
+    enabled: true
+    # Same-box Minecraft autodiscovery example (NeoForge / Fabric / Paper):
+    # install_path: "B:/MC"
+    # server_properties_path: "B:/MC/server.properties"
+    # mods_path: "B:/MC/mods"
+    # plugins_path: "B:/MC/plugins"
+    # world_path: "B:/MC/world"
+    # start_command: "B:/MC/START-ATM10.bat"
+    # name: "All the Mods 10"
   seven_dtd:
     enabled: false
-    # Same-box 7DTD autodiscovery example:
     # install_path: "/home/steam/serverfiles"
     # server_config_path: "/home/steam/serverfiles/serverconfig.xml"
-    # mods_path: "/home/steam/serverfiles/Mods"
-    # saves_path: "/home/steam/.local/share/7DaysToDie/Saves"
-    # server_admin_xml_path: "/home/steam/.local/share/7DaysToDie/Saves/serveradmin.xml"
-    # start_command: "/bin/sh /home/steam/serverfiles/startserver.sh"

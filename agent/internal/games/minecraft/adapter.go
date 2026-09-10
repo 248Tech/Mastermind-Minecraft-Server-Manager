@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,7 +17,12 @@ import (
 
 const gameSlug = "minecraft"
 
-// Adapter implements agent.GameAdapter for Minecraft (RCON + process control). Mod management not supported.
+var (
+	listPlayersRe = regexp.MustCompile(`(?i)there are (\d+) of (?:a max of )?(\d+) players online(?::\s*(.*))?`)
+	listAltRe     = regexp.MustCompile(`(?i)players online:\s*(.*)`)
+)
+
+// Adapter implements agent.GameAdapter for Minecraft (RCON + process control).
 type Adapter struct {
 	rconTimeout time.Duration
 	stopTimeout time.Duration
@@ -25,7 +32,7 @@ type Adapter struct {
 func NewAdapter() *Adapter {
 	return &Adapter{
 		rconTimeout: 15 * time.Second,
-		stopTimeout: 30 * time.Second,
+		stopTimeout: 60 * time.Second,
 	}
 }
 
@@ -42,6 +49,7 @@ func (a *Adapter) Capabilities() []string {
 		agent.CapKickPlayer,
 		agent.CapBanPlayer,
 		agent.CapGetLogPath,
+		agent.CapInstallMod, // list / quarantine helpers for mods|plugins folders
 	}
 }
 
@@ -49,31 +57,134 @@ func (a *Adapter) Capabilities() []string {
 func (a *Adapter) Execute(ctx context.Context, job agent.Job) (agent.JobResult, error) {
 	cfg := payloadToConfig(job.Payload)
 	switch job.Type {
-	case "SERVER_START":
+	case "SERVER_START", "start":
 		return resultOrErr(a.Start(ctx, cfg))
-	case "SERVER_STOP":
+	case "SERVER_STOP", "stop":
 		return resultOrErr(a.Stop(ctx, cfg))
-	case "SERVER_RESTART":
+	case "SERVER_KILL":
+		return resultOrErr(a.Kill(ctx, cfg))
+	case "SERVER_RESTART", "restart":
 		return resultOrErr(a.Restart(ctx, cfg))
+	case "SERVER_SAFE_RESTART":
+		return a.SafeRestart(ctx, cfg, job.Payload)
+	case "SERVER_SAVEWORLD":
+		out, err := a.SendCommand(ctx, cfg, "save-all")
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Output: out}, nil
+	case "SERVER_SAVE_STOP":
+		if _, err := a.SendCommand(ctx, cfg, "save-all"); err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return resultOrErr(a.Stop(ctx, cfg))
+	case "SERVER_WIPE_SAVE":
+		if !getBool(job.Payload, "confirmed") {
+			return agent.JobResult{Status: "failed", Error: "world wipe requires explicit confirmation"}, nil
+		}
+		path, err := a.WipeWorld(ctx, cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"deletedWorld": path}}, nil
 	case "STATUS":
 		st, err := a.Status(ctx, cfg)
 		if err != nil {
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
 		return agent.JobResult{Status: "success", Result: map[string]interface{}{"status": st}}, nil
-	case "RCON", "SEND_COMMAND":
-		cmd := getString(job.Payload, "command", "")
+	case "RCON", "SEND_COMMAND", "rcon":
+		cmd := strings.TrimSpace(getString(job.Payload, "command", ""))
+		if cmd == "" {
+			return agent.JobResult{Status: "failed", Error: "console command is required"}, nil
+		}
+		if len(cmd) > 512 || strings.ContainsAny(cmd, "\r\n") {
+			return agent.JobResult{Status: "failed", Error: "console command must be one line and at most 512 characters"}, nil
+		}
 		out, err := a.SendCommand(ctx, cfg, cmd)
 		if err != nil {
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
 		return agent.JobResult{Status: "success", Output: out}, nil
-	case "LIST_PLAYERS":
-		out, err := a.listPlayers(ctx, cfg)
+	case "LIST_PLAYERS", "PLAYER_LIST_SYNC":
+		players, raw, err := a.ListPlayersParsed(ctx, cfg)
 		if err != nil {
 			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
 		}
-		return agent.JobResult{Status: "success", Result: map[string]interface{}{"players": out}}, nil
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"players": players, "raw": raw}}, nil
+	case "PLAYER_KICK":
+		name := getString(job.Payload, "player", getString(job.Payload, "player_id", getString(job.Payload, "name", "")))
+		reason := getString(job.Payload, "reason", "")
+		if name == "" {
+			return agent.JobResult{Status: "failed", Error: "player name required"}, nil
+		}
+		cmd := "kick " + sanitizeRCONArg(name)
+		if reason != "" {
+			cmd += " " + sanitizeRCONArg(reason)
+		}
+		out, err := a.SendCommand(ctx, cfg, cmd)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Output: out}, nil
+	case "PLAYER_KICK_ALL":
+		out, err := a.SendCommand(ctx, cfg, "kick @a")
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Output: out}, nil
+	case "PLAYER_BAN":
+		name := getString(job.Payload, "player", getString(job.Payload, "player_id", getString(job.Payload, "name", "")))
+		reason := getString(job.Payload, "reason", "")
+		if name == "" {
+			return agent.JobResult{Status: "failed", Error: "player name required"}, nil
+		}
+		return resultOrErr(a.BanPlayer(ctx, cfg, name, reason))
+	case "PLAYER_ADMIN_PROMOTE":
+		name := getString(job.Payload, "player", getString(job.Payload, "name", ""))
+		if name == "" {
+			return agent.JobResult{Status: "failed", Error: "player name required"}, nil
+		}
+		out, err := a.SendCommand(ctx, cfg, "op "+sanitizeRCONArg(name))
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Output: out}, nil
+	case "PLAYER_ADMIN_DEMOTE":
+		name := getString(job.Payload, "player", getString(job.Payload, "name", ""))
+		if name == "" {
+			return agent.JobResult{Status: "failed", Error: "player name required"}, nil
+		}
+		out, err := a.SendCommand(ctx, cfg, "deop "+sanitizeRCONArg(name))
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Output: out}, nil
+	case "SERVER_CONFIG_READ":
+		content, path, err := a.readServerProperties(cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"path": path, "content": content}}, nil
+	case "SERVER_CONFIG_WRITE":
+		content := getString(job.Payload, "content", "")
+		path, err := a.writeServerProperties(cfg, job.Payload, content)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"path": path, "saved": true}}, nil
+	case "SAVE_BACKUP":
+		path, err := a.BackupWorld(ctx, cfg, job.Payload)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"backup": path}}, nil
+	case "MOD_LIST":
+		mods, err := a.ListMods(cfg)
+		if err != nil {
+			return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+		}
+		return agent.JobResult{Status: "success", Result: map[string]interface{}{"mods": mods}}, nil
 	default:
 		return agent.JobResult{Status: "failed", Error: "unsupported job type: " + job.Type}, nil
 	}
@@ -121,15 +232,53 @@ func payloadToConfig(p map[string]interface{}) *agent.InstanceConfig {
 }
 
 func getString(m map[string]interface{}, key, def string) string {
+	if m == nil {
+		return def
+	}
 	if v, ok := m[key].(string); ok {
 		return v
 	}
 	return def
 }
 
+func getBool(m map[string]interface{}, key string) bool {
+	if m == nil {
+		return false
+	}
+	switch v := m[key].(type) {
+	case bool:
+		return v
+	case string:
+		return strings.EqualFold(v, "true") || v == "1"
+	case float64:
+		return v != 0
+	default:
+		return false
+	}
+}
+
+func getInt(m map[string]interface{}, key string, def int) int {
+	if m == nil {
+		return def
+	}
+	switch v := m[key].(type) {
+	case float64:
+		return int(v)
+	case int:
+		return v
+	case string:
+		n, err := strconv.Atoi(v)
+		if err == nil {
+			return n
+		}
+	}
+	return def
+}
+
 func (a *Adapter) withRCON(ctx context.Context, cfg *agent.InstanceConfig, fn func(*Client) error) error {
+	_ = ctx
 	if cfg.TelnetPassword == "" {
-		return fmt.Errorf("rcon password required (telnet_password)")
+		return fmt.Errorf("rcon password required (telnet_password / rcon.password)")
 	}
 	port := cfg.TelnetPort
 	if port <= 0 {
@@ -150,7 +299,7 @@ func (a *Adapter) startAndCheck(ctx context.Context, cmd *exec.Cmd) error {
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
-	startupWindow := 2 * time.Second
+	startupWindow := 3 * time.Second
 	select {
 	case err := <-done:
 		if err != nil {
@@ -169,21 +318,32 @@ func (a *Adapter) Start(ctx context.Context, cfg *agent.InstanceConfig) error {
 		return fmt.Errorf("install_path required")
 	}
 	if cfg.StartCommand != "" {
-		parts := strings.Fields(cfg.StartCommand)
-		if len(parts) == 0 {
-			return fmt.Errorf("empty start_command")
+		return a.runStartCommand(ctx, cfg.InstallPath, cfg.StartCommand)
+	}
+	for _, jar := range []string{"server.jar", "paper.jar", "purpur.jar", "fabric-server-launch.jar"} {
+		if _, err := os.Stat(filepath.Join(cfg.InstallPath, jar)); err == nil {
+			cmd := exec.CommandContext(ctx, "java", "-jar", jar)
+			cmd.Dir = cfg.InstallPath
+			return a.startAndCheck(ctx, cmd)
 		}
-		cmd := exec.CommandContext(ctx, parts[0], parts[1:]...)
-		cmd.Dir = cfg.InstallPath
-		return a.startAndCheck(ctx, cmd)
 	}
-	// Default: java -jar server.jar (or common jar name)
-	jar := filepath.Join(cfg.InstallPath, "server.jar")
-	if _, err := os.Stat(jar); err != nil {
-		return fmt.Errorf("no start_command and server.jar not found in %q", cfg.InstallPath)
+	return fmt.Errorf("no start_command and no known server jar in %q", cfg.InstallPath)
+}
+
+func (a *Adapter) runStartCommand(ctx context.Context, dir, startCommand string) error {
+	parts := strings.Fields(startCommand)
+	if len(parts) == 0 {
+		return fmt.Errorf("empty start_command")
 	}
-	cmd := exec.CommandContext(ctx, "java", "-jar", "server.jar")
-	cmd.Dir = cfg.InstallPath
+	ext := strings.ToLower(filepath.Ext(parts[0]))
+	var cmd *exec.Cmd
+	if ext == ".bat" || ext == ".cmd" {
+		args := append([]string{"/C", parts[0]}, parts[1:]...)
+		cmd = exec.CommandContext(ctx, "cmd.exe", args...)
+	} else {
+		cmd = exec.CommandContext(ctx, parts[0], parts[1:]...)
+	}
+	cmd.Dir = dir
 	return a.startAndCheck(ctx, cmd)
 }
 
@@ -197,11 +357,23 @@ func (a *Adapter) Stop(ctx context.Context, cfg *agent.InstanceConfig) error {
 		cmd.Dir = cfg.InstallPath
 		return cmd.Run()
 	}
-	// Graceful: RCON "stop"
 	return a.withRCON(ctx, cfg, func(c *Client) error {
 		_, err := c.Exec("stop")
 		return err
 	})
+}
+
+func (a *Adapter) Kill(ctx context.Context, cfg *agent.InstanceConfig) error {
+	_ = ctx
+	if cfg.InstallPath == "" {
+		return fmt.Errorf("install_path required")
+	}
+	// Best-effort: stop via RCON first, then leave process kill to the operator/OS service.
+	_ = a.withRCON(context.Background(), cfg, func(c *Client) error {
+		_, err := c.Exec("stop")
+		return err
+	})
+	return nil
 }
 
 func (a *Adapter) Restart(ctx context.Context, cfg *agent.InstanceConfig) error {
@@ -211,9 +383,58 @@ func (a *Adapter) Restart(ctx context.Context, cfg *agent.InstanceConfig) error 
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(3 * time.Second):
+	case <-time.After(5 * time.Second):
 	}
 	return a.Start(ctx, cfg)
+}
+
+func (a *Adapter) SafeRestart(ctx context.Context, cfg *agent.InstanceConfig, payload map[string]interface{}) (agent.JobResult, error) {
+	countdown := getInt(payload, "countdown_sec", 60)
+	if countdown < 5 {
+		countdown = 5
+	}
+	if countdown > 600 {
+		countdown = 600
+	}
+	msg := getString(payload, "message", "Server restarting for maintenance.")
+	announce := fmt.Sprintf("say %s Restart in %d seconds.", sanitizeRCONArg(msg), countdown)
+	if _, err := a.SendCommand(ctx, cfg, announce); err != nil {
+		return agent.JobResult{Status: "failed", Error: "announce failed: " + err.Error()}, nil
+	}
+	deadline := time.Now().Add(time.Duration(countdown) * time.Second)
+	for {
+		remain := int(time.Until(deadline).Seconds())
+		if remain <= 0 {
+			break
+		}
+		if remain == 30 || remain == 10 || remain == 5 {
+			_, _ = a.SendCommand(ctx, cfg, fmt.Sprintf("say Restart in %d seconds.", remain))
+		}
+		select {
+		case <-ctx.Done():
+			return agent.JobResult{Status: "failed", Error: ctx.Err().Error()}, nil
+		case <-time.After(1 * time.Second):
+		}
+	}
+	if _, err := a.SendCommand(ctx, cfg, "say Restarting now…"); err != nil {
+		return agent.JobResult{Status: "failed", Error: err.Error()}, nil
+	}
+	if _, err := a.SendCommand(ctx, cfg, "save-all flush"); err != nil {
+		_, _ = a.SendCommand(ctx, cfg, "save-all")
+	}
+	_, _ = a.SendCommand(ctx, cfg, "kick @a Server restarting")
+	if err := a.Stop(ctx, cfg); err != nil {
+		return agent.JobResult{Status: "failed", Error: "stop failed: " + err.Error()}, nil
+	}
+	select {
+	case <-ctx.Done():
+		return agent.JobResult{Status: "failed", Error: ctx.Err().Error()}, nil
+	case <-time.After(5 * time.Second):
+	}
+	if err := a.Start(ctx, cfg); err != nil {
+		return agent.JobResult{Status: "failed", Error: "start failed: " + err.Error()}, nil
+	}
+	return agent.JobResult{Status: "success", Result: map[string]interface{}{"restarted": true, "countdown_sec": countdown}}, nil
 }
 
 func (a *Adapter) Status(ctx context.Context, cfg *agent.InstanceConfig) (string, error) {
@@ -237,9 +458,53 @@ func (a *Adapter) SendCommand(ctx context.Context, cfg *agent.InstanceConfig, co
 	return out, err
 }
 
-// listPlayers returns the output of "list" (e.g. "There are 2/20 players online: Alice, Bob").
-func (a *Adapter) listPlayers(ctx context.Context, cfg *agent.InstanceConfig) (string, error) {
-	return a.SendCommand(ctx, cfg, "list")
+func (a *Adapter) ListPlayersParsed(ctx context.Context, cfg *agent.InstanceConfig) ([]map[string]interface{}, string, error) {
+	raw, err := a.SendCommand(ctx, cfg, "list")
+	if err != nil {
+		return nil, "", err
+	}
+	players := parseListOutput(raw)
+	return players, raw, nil
+}
+
+func parseListOutput(raw string) []map[string]interface{} {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	var names []string
+	if m := listPlayersRe.FindStringSubmatch(raw); len(m) >= 4 {
+		if strings.TrimSpace(m[3]) != "" {
+			names = splitPlayerNames(m[3])
+		}
+	} else if m := listAltRe.FindStringSubmatch(raw); len(m) >= 2 {
+		names = splitPlayerNames(m[1])
+	}
+	out := make([]map[string]interface{}, 0, len(names))
+	for _, n := range names {
+		n = strings.TrimSpace(n)
+		if n == "" {
+			continue
+		}
+		out = append(out, map[string]interface{}{"name": n})
+	}
+	return out
+}
+
+func splitPlayerNames(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func (a *Adapter) StreamChat(ctx context.Context, cfg *agent.InstanceConfig, w io.Writer) error {
@@ -280,4 +545,181 @@ func (a *Adapter) GetLogPath(cfg *agent.InstanceConfig) (string, error) {
 		return "", fmt.Errorf("install_path required")
 	}
 	return filepath.Join(cfg.InstallPath, "logs", "latest.log"), nil
+}
+
+func (a *Adapter) propertiesPath(cfg *agent.InstanceConfig, payload map[string]interface{}) string {
+	if p := getString(payload, "server_config_path", ""); p != "" {
+		return p
+	}
+	if p := getString(payload, "path", ""); p != "" {
+		return p
+	}
+	return filepath.Join(cfg.InstallPath, "server.properties")
+}
+
+func (a *Adapter) readServerProperties(cfg *agent.InstanceConfig, payload map[string]interface{}) (string, string, error) {
+	if cfg.InstallPath == "" && getString(payload, "server_config_path", "") == "" {
+		return "", "", fmt.Errorf("install_path required")
+	}
+	path := a.propertiesPath(cfg, payload)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", "", err
+	}
+	return string(b), path, nil
+}
+
+func (a *Adapter) writeServerProperties(cfg *agent.InstanceConfig, payload map[string]interface{}, content string) (string, error) {
+	if content == "" {
+		return "", fmt.Errorf("content required")
+	}
+	if cfg.InstallPath == "" && getString(payload, "server_config_path", "") == "" {
+		return "", fmt.Errorf("install_path required")
+	}
+	path := a.propertiesPath(cfg, payload)
+	tmp := path + ".mastermind.tmp"
+	if err := os.WriteFile(tmp, []byte(content), 0644); err != nil {
+		return "", err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return "", err
+	}
+	return path, nil
+}
+
+func (a *Adapter) worldPath(cfg *agent.InstanceConfig, payload map[string]interface{}) (string, error) {
+	if p := getString(payload, "world_path", ""); p != "" {
+		return p, nil
+	}
+	level := getString(payload, "level_name", "")
+	if level == "" {
+		propsPath := a.propertiesPath(cfg, payload)
+		if b, err := os.ReadFile(propsPath); err == nil {
+			for _, line := range strings.Split(string(b), "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "level-name=") {
+					level = strings.TrimSpace(strings.TrimPrefix(line, "level-name="))
+					break
+				}
+			}
+		}
+	}
+	if level == "" {
+		level = "world"
+	}
+	if cfg.InstallPath == "" {
+		return "", fmt.Errorf("install_path required")
+	}
+	return filepath.Join(cfg.InstallPath, level), nil
+}
+
+func (a *Adapter) WipeWorld(ctx context.Context, cfg *agent.InstanceConfig, payload map[string]interface{}) (string, error) {
+	_ = a.Stop(ctx, cfg)
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case <-time.After(3 * time.Second):
+	}
+	world, err := a.worldPath(cfg, payload)
+	if err != nil {
+		return "", err
+	}
+	if err := os.RemoveAll(world); err != nil {
+		return "", err
+	}
+	// Also remove common companion dims next to the overworld folder name.
+	base := filepath.Base(world)
+	parent := filepath.Dir(world)
+	for _, suffix := range []string{"_nether", "_the_end"} {
+		_ = os.RemoveAll(filepath.Join(parent, base+suffix))
+	}
+	return world, nil
+}
+
+func (a *Adapter) BackupWorld(ctx context.Context, cfg *agent.InstanceConfig, payload map[string]interface{}) (string, error) {
+	_, _ = a.SendCommand(ctx, cfg, "save-all flush")
+	world, err := a.worldPath(cfg, payload)
+	if err != nil {
+		return "", err
+	}
+	if _, err := os.Stat(world); err != nil {
+		return "", err
+	}
+	backupRoot := getString(payload, "backup_dir", filepath.Join(cfg.InstallPath, "mastermind-backups"))
+	if err := os.MkdirAll(backupRoot, 0755); err != nil {
+		return "", err
+	}
+	stamp := time.Now().UTC().Format("20060102-150405")
+	dest := filepath.Join(backupRoot, filepath.Base(world)+"-"+stamp)
+	if err := copyDir(world, dest); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
+
+func (a *Adapter) ListMods(cfg *agent.InstanceConfig) ([]map[string]interface{}, error) {
+	if cfg.InstallPath == "" {
+		return nil, fmt.Errorf("install_path required")
+	}
+	var out []map[string]interface{}
+	for _, folder := range []string{"mods", "plugins"} {
+		dir := filepath.Join(cfg.InstallPath, folder)
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			name := e.Name()
+			if strings.HasPrefix(name, ".") {
+				continue
+			}
+			info, _ := e.Info()
+			item := map[string]interface{}{
+				"name":   name,
+				"folder": folder,
+				"dir":    e.IsDir(),
+			}
+			if info != nil {
+				item["size"] = info.Size()
+				item["modTime"] = info.ModTime().UTC().Format(time.RFC3339)
+			}
+			out = append(out, item)
+		}
+	}
+	return out, nil
+}
+
+func copyDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if info.IsDir() {
+			return os.MkdirAll(target, info.Mode())
+		}
+		in, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer in.Close()
+		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+			return err
+		}
+		out, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode())
+		if err != nil {
+			return err
+		}
+		_, copyErr := io.Copy(out, in)
+		closeErr := out.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		return closeErr
+	})
 }

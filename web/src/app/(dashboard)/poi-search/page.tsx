@@ -38,7 +38,7 @@ export default function PoiSearchPage() {
     catch (error) { setMessage(error instanceof Error ? error.message : 'Could not load POI catalogue'); }
     finally { setBusy(false); }
   }, [orgId, server]);
-  useEffect(() => { if (!orgId) return; api.get<ServerInstance[]>(`/api/orgs/${orgId}/server-instances`).then(rows => { const game = rows.filter(row => row.gameType === '7dtd'); setServers(game); const selected = game.find(row => row.id === getStoredServerId()) || game[0] || null; setServer(selected); }).catch(error => setMessage(error instanceof Error ? error.message : 'Could not load servers')); }, [orgId]);
+  useEffect(() => { if (!orgId) return; api.get<ServerInstance[]>(`/api/orgs/${orgId}/server-instances`).then(rows => { const preferred = rows.filter(row => row.gameType === 'minecraft'); const game = preferred.length ? preferred : rows.filter(row => row.gameType === '7dtd'); setServers(game); const selected = game.find(row => row.id === getStoredServerId()) || game[0] || null; setServer(selected); }).catch(error => setMessage(error instanceof Error ? error.message : 'Could not load servers')); }, [orgId]);
   useEffect(() => { if (server) void load(server); }, [server?.id]);
   const filtered = useMemo(() => { const q = search.trim().toLocaleLowerCase(); return q ? catalog.items.filter(item => item.name.toLocaleLowerCase().includes(q)) : catalog.items; }, [catalog.items, search]);
   async function index() {

@@ -49,8 +49,9 @@ type HostCfg struct {
 }
 
 type DiscoveryCfg struct {
-	Enabled  bool                 `yaml:"enabled" json:"enabled"`
-	SevenDTD SevenDTDDiscoveryCfg `yaml:"seven_dtd" json:"seven_dtd"`
+	Enabled   bool                    `yaml:"enabled" json:"enabled"`
+	SevenDTD  SevenDTDDiscoveryCfg    `yaml:"seven_dtd" json:"seven_dtd"`
+	Minecraft MinecraftDiscoveryCfg   `yaml:"minecraft" json:"minecraft"`
 }
 
 type SevenDTDDiscoveryCfg struct {
@@ -62,6 +63,18 @@ type SevenDTDDiscoveryCfg struct {
 	ServerAdminXMLPath string `yaml:"server_admin_xml_path" json:"server_admin_xml_path"`
 	StartCommand       string `yaml:"start_command" json:"start_command"`
 	Name               string `yaml:"name" json:"name"`
+}
+
+// MinecraftDiscoveryCfg autodetects Java/NeoForge/Fabric/Paper installs from server.properties.
+type MinecraftDiscoveryCfg struct {
+	Enabled              bool   `yaml:"enabled" json:"enabled"`
+	InstallPath          string `yaml:"install_path" json:"install_path"`
+	ServerPropertiesPath string `yaml:"server_properties_path" json:"server_properties_path"`
+	ModsPath             string `yaml:"mods_path" json:"mods_path"`
+	PluginsPath          string `yaml:"plugins_path" json:"plugins_path"`
+	WorldPath            string `yaml:"world_path" json:"world_path"`
+	StartCommand         string `yaml:"start_command" json:"start_command"`
+	Name                 string `yaml:"name" json:"name"`
 }
 
 // Load reads config from path. Supports .yaml, .yml, .json.
@@ -120,6 +133,30 @@ func (c *Config) Env() {
 	}
 	if v := os.Getenv("MASTERMIND_7DTD_NAME"); v != "" {
 		c.Discovery.SevenDTD.Name = v
+	}
+	if v := os.Getenv("MASTERMIND_MC_DISCOVERY_ENABLED"); v != "" {
+		c.Discovery.Minecraft.Enabled = v == "1" || v == "true" || v == "TRUE"
+	}
+	if v := os.Getenv("MASTERMIND_MC_INSTALL_PATH"); v != "" {
+		c.Discovery.Minecraft.InstallPath = v
+	}
+	if v := os.Getenv("MASTERMIND_MC_SERVER_PROPERTIES"); v != "" {
+		c.Discovery.Minecraft.ServerPropertiesPath = v
+	}
+	if v := os.Getenv("MASTERMIND_MC_MODS_PATH"); v != "" {
+		c.Discovery.Minecraft.ModsPath = v
+	}
+	if v := os.Getenv("MASTERMIND_MC_PLUGINS_PATH"); v != "" {
+		c.Discovery.Minecraft.PluginsPath = v
+	}
+	if v := os.Getenv("MASTERMIND_MC_WORLD_PATH"); v != "" {
+		c.Discovery.Minecraft.WorldPath = v
+	}
+	if v := os.Getenv("MASTERMIND_MC_START_COMMAND"); v != "" {
+		c.Discovery.Minecraft.StartCommand = v
+	}
+	if v := os.Getenv("MASTERMIND_MC_NAME"); v != "" {
+		c.Discovery.Minecraft.Name = v
 	}
 	if v := os.Getenv("MASTERMIND_JOBS_MAX_CONCURRENT_READS"); v != "" {
 		// Invalid or non-positive environment values are ignored so they cannot

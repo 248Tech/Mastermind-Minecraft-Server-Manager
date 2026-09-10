@@ -92,7 +92,7 @@ Make sure nothing else is using these before you start.
 
 ```bash
 git clone <your-repo-url>
-cd mastermind-7dtd-ai-server-manager
+cd Mastermind-Minecraft-Server-Manager
 
 # Install all dependencies (runs in all packages)
 make bootstrap

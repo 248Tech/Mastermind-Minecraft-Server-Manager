@@ -784,11 +784,13 @@ export default function LiveMapClient() {
     api
       .get<ServerInstance[]>(`/api/orgs/${orgId}/server-instances`)
       .then((rows) => {
-        const gameServers = rows.filter((candidate) => candidate.gameType === "7dtd");
-        setServers(gameServers);
-        setServer(gameServers.find((candidate) => candidate.id === getStoredServerId()) ?? gameServers[0] ?? null);
+        const gameServers = rows.filter((candidate) => candidate.gameType === "minecraft" || candidate.gameType === "7dtd");
+        const preferred = gameServers.filter((c) => c.gameType === "minecraft");
+        const ordered = preferred.length ? preferred : gameServers;
+        setServers(ordered);
+        setServer(ordered.find((candidate) => candidate.id === getStoredServerId()) ?? ordered[0] ?? null);
       })
-      .catch(() => setVisitNotice("Could not find the registered 7DTD server."));
+      .catch(() => setVisitNotice("Could not load registered game servers."));
   }, [ready, orgId]);
   useEffect(() => {
     if (!ready || !orgId) return;

@@ -1,14 +1,14 @@
 # Minecraft adapter — required server config
 
-The Minecraft game adapter (agent-side) uses **RCON** for commands and **process control** for start/stop. Mod management is not supported in MVP.
+The Minecraft game adapter (agent-side) uses **RCON** for commands and **process control** for start/stop. Mod **listing** is supported; full quarantine/upload parity with the 7DTD adapter is still expanding.
 
 ## Capability registration (control plane)
 
-The **minecraft** game type must have these capabilities so the UI shows the right actions:
+The **minecraft** game type should advertise:
 
-- `start`, `stop`, `restart`, `status`, `send_command`, `kick_player`, `ban_player`, `get_log_path`
+- `start`, `stop`, `restart`, `status`, `send_command`, `kick_player`, `ban_player`, `get_log_path`, `install_mod`
 
-Seeded by migration `20250223000009_seed_minecraft_capabilities` (or run the SQL from design-game-adapter-capabilities.md with the list above).
+Seeded by `control-plane/prisma/seed.ts` (Minecraft is listed first).
 
 ## Required server instance fields
 
@@ -16,16 +16,14 @@ Stored on **server_instances** (and passed in job payload to the agent). For Min
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| **install_path** | Yes | Server root directory (contains `server.jar` and `logs/`). |
-| **start_command** | Recommended | Command to start the server (e.g. `java -Xmx2G -jar server.jar`). If omitted, adapter runs `java -jar server.jar` from `install_path`. |
-| **telnet_host** | Yes (for RCON) | RCON host (e.g. `127.0.0.1`). |
-| **telnet_port** | Yes (for RCON) | RCON port; enable in `server.properties`: `enable-rcon=true`, `rcon.port=25575`. Default adapter port if unset: `25575`. |
-| **telnet_password** | Yes (for RCON) | RCON password; set `rcon.password=...` in `server.properties`. |
-| **stop_command** | No | If set, used to stop the server (e.g. a script). If omitted, adapter sends RCON `stop` for graceful shutdown. |
+| **install_path** | Yes | Server root (contains `server.properties`, `logs/`, usually `mods/` or `plugins/`). |
+| **start_command** | Recommended | e.g. `java -Xmx8G -jar server.jar nogui` or a `.bat`/`.sh` launcher (`START-ATM10.bat`). |
+| **telnet_host** | Yes (for RCON) | RCON host (usually `127.0.0.1`). |
+| **telnet_port** | Yes (for RCON) | Default `25575`. |
+| **telnet_password** | Yes (for RCON) | Must match `rcon.password` in `server.properties`. |
+| **stop_command** | No | Optional OS stop script; otherwise RCON `stop`. |
 
-## server.properties (Minecraft server)
-
-Enable RCON on the Minecraft server:
+## server.properties
 
 ```properties
 enable-rcon=true
@@ -33,15 +31,40 @@ rcon.port=25575
 rcon.password=your-secure-password
 ```
 
+## Autodiscovery
+
+Agent config / env:
+
+```yaml
+discovery:
+  enabled: true
+  minecraft:
+    enabled: true
+    install_path: "B:/MC"
+    start_command: "B:/MC/START-ATM10.bat"
+```
+
+Env equivalents: `MASTERMIND_MC_DISCOVERY_ENABLED`, `MASTERMIND_MC_INSTALL_PATH`, `MASTERMIND_MC_SERVER_PROPERTIES`, `MASTERMIND_MC_START_COMMAND`, `MASTERMIND_MC_NAME`, …
+
+Discovery syncs name (from MOTD), RCON port/password, world/level name, and mod/plugin counts.
+
 ## Job types (agent)
 
-- `SERVER_START`, `SERVER_STOP`, `SERVER_RESTART` — process control.
-- `STATUS` — RCON `list`; if it succeeds, status is `running`, else `stopped`.
-- `RCON`, `SEND_COMMAND` — payload `command`: raw command string; response in `output`.
-- `LIST_PLAYERS` — runs `list` and returns result in `result.players`.
-- Kick: `SendCommand` / job with `command: "kick <player>"`.
-- Ban: `SendCommand` / job with `command: "ban <player> [reason]"`.
+| Job | Behavior |
+|-----|----------|
+| `SERVER_START` / `STOP` / `RESTART` / `KILL` | Process + RCON lifecycle |
+| `SERVER_SAFE_RESTART` | Countdown `say`, `save-all`, kick, stop, start |
+| `SERVER_SAVEWORLD` | `save-all` |
+| `STATUS` | RCON `list` reachability |
+| `RCON` / `SEND_COMMAND` | Raw console command |
+| `LIST_PLAYERS` / `PLAYER_LIST_SYNC` | Parsed player names from `list` |
+| `PLAYER_KICK` / `PLAYER_KICK_ALL` / `PLAYER_BAN` | Kick/ban |
+| `PLAYER_ADMIN_PROMOTE` / `DEMOTE` | `op` / `deop` |
+| `SERVER_CONFIG_READ` / `WRITE` | `server.properties` |
+| `SAVE_BACKUP` | Copy world folder under `mastermind-backups/` |
+| `SERVER_WIPE_SAVE` | Delete world (requires `confirmed: true`) |
+| `MOD_LIST` | List files under `mods/` and `plugins/` |
 
 ## Player list
 
-Use RCON command `list` (e.g. via `SEND_COMMAND` job or adapter `SendCommand(ctx, cfg, "list")`). Output format is server-dependent (e.g. "There are 2/20 players online: Alice, Bob").
+RCON `list` output is parsed for common Paper/Vanilla formats, e.g. `There are 2 of a max of 20 players online: Alice, Bob`.

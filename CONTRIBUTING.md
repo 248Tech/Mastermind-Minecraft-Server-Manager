@@ -26,4 +26,4 @@
 
 ## Questions
 
-- Open a [GitHub Discussion](https://github.com/YOUR_ORG/mastermind-7dtd-ai-server-manager/discussions) or an issue for questions and ideas.
+- Open a [GitHub Discussion](https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/discussions) or an issue for questions and ideas.

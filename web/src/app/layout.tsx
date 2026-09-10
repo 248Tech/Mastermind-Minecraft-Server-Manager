@@ -14,22 +14,18 @@ const NAV_GROUPS = [
   { label: 'Server', items: [
     { href: '/tools', label: 'Tools', icon: '⚒', title: 'Connection protection and server utilities' },
     { href: '/players', label: 'Players', icon: '♟', title: 'Player identities, playtime, kick, and ban controls' },
-    { href: '/mods', label: 'Mods', icon: '◇', title: 'Installed mods, quarantine, and member recommendations awaiting approval' },
-    { href: '/poi-search', label: 'POI Search', icon: '⌕', title: 'Search server POI prefabs and view game preview images' },
-    { href: '/saves', label: 'Saves', icon: '▣', title: 'Back up, restore, and manage world saves' },
-    { href: '/logs', label: 'Logs', icon: '≡', title: 'Live and recorded server logs' },
-    { href: '/chat', label: 'Chat', icon: '💬', title: 'Player-only chat history and Discord relay' },
-    { href: '/region-healer', label: 'Region Healer', icon: '✚', title: 'Automatic corrupt-region recovery' },
-    { href: '/profile-editor', label: 'Profile Editor', icon: '✎', title: 'Inspect and edit downloaded 7DTD player profile files' },
-    { href: '/live-map', label: 'Live Map', icon: '⌖', title: 'Live terrain, players, entities, and region coordinates' },
+    { href: '/mods', label: 'Mods', icon: '◇', title: 'Installed mods/plugins and quarantine workflows' },
+    { href: '/saves', label: 'Worlds', icon: '▣', title: 'Back up, restore, and manage world folders' },
+    { href: '/logs', label: 'Logs', icon: '≡', title: 'Live and recorded server logs (latest.log)' },
+    { href: '/chat', label: 'Chat', icon: '💬', title: 'Player chat history and Discord relay' },
     { href: '/donator-shop', label: 'Donator Shop', icon: '♡', title: 'Create supporter packages and optional In-Game Gifts for the player portal' },
     { href: '/purchases', label: 'Donations', icon: '$', title: 'Completed player donations and In-Game Gift delivery' },
   ]},
   { label: 'Automation', items: [
-    { href: '/jobs', label: 'Jobs', icon: '⚡', title: 'Send one-off commands to your servers' },
+    { href: '/jobs', label: 'Jobs', icon: '⚡', title: 'Send one-off RCON commands and lifecycle jobs to your servers' },
     { href: '/schedules', label: 'Schedules', icon: '◷', title: 'Run jobs automatically on a schedule' },
     { href: '/alerts', label: 'Alerts', icon: '◎', title: 'Get notified via Discord when servers go offline' },
-    { href: '/triggers', label: 'Triggers', icon: '✦', title: 'Run actions when in-game events happen, such as a player reaching a level' },
+    { href: '/triggers', label: 'Triggers', icon: '✦', title: 'Run actions when in-game events happen' },
   ]},
   { label: 'System', items: [
     { href: '/hosts', label: 'Hosts', icon: '⬡', title: 'Machines running the agent and game servers' },
@@ -116,7 +112,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     if (!orgId) return;
     const loadServers=()=>api.get<{id:string;name:string;gameType:string}[]>(`/api/orgs/${orgId}/server-instances`).then(rows=>{
       if(!active)return;
-      const gameServers=rows.filter(row=>row.gameType?.toLowerCase()==='7dtd');
+      const preferred=rows.filter(row=>row.gameType?.toLowerCase()==='minecraft');
+      const gameServers=preferred.length?preferred:rows;
       setServers(gameServers);
       const selected=gameServers.find(row=>row.id===getStoredServerId())||gameServers[0];
       if(selected){setServerId(selected.id);if(selected.id!==getStoredServerId())setStoredServerId(selected.id);}
@@ -141,7 +138,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        <title>Mastermind — 7DTD Server Manager</title>
+        <title>Mastermind — Minecraft Server Manager</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className="app-shell" style={{ margin: 0, display: 'flex', minHeight: '100vh', background: '#0a0a0f' }}>

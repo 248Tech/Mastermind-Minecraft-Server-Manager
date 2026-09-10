@@ -1,4 +1,4 @@
-/** MVP job types for 7DTD server control */
+/** Job types for Minecraft (primary) and legacy 7DTD server control */
 export const JOB_TYPES = [
   'SERVER_START',
   'SERVER_STOP',

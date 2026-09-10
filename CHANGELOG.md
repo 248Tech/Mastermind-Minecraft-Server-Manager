@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.0] - 2026-09-10
+
+### Added
+
+- Forked as **Mastermind Minecraft Server Manager** from the 7DTD control-plane lineage.
+- Expanded Minecraft agent adapter: safe restart, save-all, kick/ban/op/deop, `server.properties` read/write, world backup/wipe, mod/plugin listing, parsed `list` players.
+- Minecraft autodiscovery from `server.properties` (`discovery.minecraft` / `MASTERMIND_MC_*` env).
+
+### Changed
+
+- Product branding, seed order, and dashboard defaults target **minecraft** first.
+- Navigation hides 7DTD-only surfaces (POI Search, Live Map, Profile Editor, Region Healer) from the primary Minecraft nav.
+
 ## [0.0.15] - 2026-09-09
 
 ### Added

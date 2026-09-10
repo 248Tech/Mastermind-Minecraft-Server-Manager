@@ -86,12 +86,36 @@ func main() {
 	cl := client.NewHTTPClient(cfg.ControlPlaneURL, agentKey)
 
 	var gameProbe heartbeat.GameProbe
+	if shouldDiscoverMinecraft(cfg) {
+		discovered, err := discovery.DiscoverMinecraft(cfg.Discovery.Minecraft)
+		if err != nil {
+			slog.Warn("minecraft discovery failed", "err", err)
+		} else {
+			if discovered.TelnetHost != "" && discovered.TelnetPort > 0 {
+				gameProbe.Address = net.JoinHostPort(discovered.TelnetHost, strconv.Itoa(discovered.TelnetPort))
+			}
+			err = cl.SyncDiscoveredServer(context.Background(), hostID, "minecraft", &client.DiscoveredServer{
+				Name:           discovered.Name,
+				InstallPath:    discovered.InstallPath,
+				StartCommand:   discovered.StartCommand,
+				TelnetHost:     discovered.TelnetHost,
+				TelnetPort:     discovered.TelnetPort,
+				TelnetPassword: discovered.TelnetPassword,
+				Config:         discovered.Config,
+			})
+			if err != nil {
+				slog.Warn("minecraft discovery sync failed", "err", err)
+			} else {
+				slog.Info("minecraft discovery synced", "install_path", discovered.InstallPath, "name", discovered.Name)
+			}
+		}
+	}
 	if shouldDiscoverSevenDTD(cfg) {
 		discovered, err := discovery.DiscoverSevenDTD(cfg.Discovery.SevenDTD)
 		if err != nil {
 			slog.Warn("7dtd discovery failed", "err", err)
 		} else {
-			if discovered.TelnetHost != "" && discovered.TelnetPort > 0 {
+			if gameProbe.Address == "" && discovered.TelnetHost != "" && discovered.TelnetPort > 0 {
 				gameProbe.Address = net.JoinHostPort(discovered.TelnetHost, strconv.Itoa(discovered.TelnetPort))
 				gameProbe.CloseCommand = "exit"
 			}
@@ -164,11 +188,24 @@ func shouldDiscoverSevenDTD(cfg *config.Config) bool {
 		return false
 	}
 	d := cfg.Discovery.SevenDTD
-	return cfg.Discovery.Enabled ||
-		d.Enabled ||
+	return d.Enabled ||
 		d.InstallPath != "" ||
 		d.ServerConfigPath != "" ||
 		d.ModsPath != "" ||
 		d.SavesPath != "" ||
 		d.ServerAdminXMLPath != ""
+}
+
+func shouldDiscoverMinecraft(cfg *config.Config) bool {
+	if cfg == nil {
+		return false
+	}
+	d := cfg.Discovery.Minecraft
+	return cfg.Discovery.Enabled ||
+		d.Enabled ||
+		d.InstallPath != "" ||
+		d.ServerPropertiesPath != "" ||
+		d.ModsPath != "" ||
+		d.PluginsPath != "" ||
+		d.WorldPath != ""
 }
