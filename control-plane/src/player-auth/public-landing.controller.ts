@@ -9,4 +9,9 @@ export class PublicLandingController {
   landing() {
     return this.players.publicLanding();
   }
+
+  @Get('map')
+  map() {
+    return this.players.publicMap();
+  }
 }

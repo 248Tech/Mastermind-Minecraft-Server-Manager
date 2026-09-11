@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
+import { controlPlaneInternalUrl } from '../../../../../lib/control-plane';
 
 export async function GET(request: NextRequest) {
-  const control = (process.env.CONTROL_PLANE_INTERNAL_URL || 'http://control-plane:3001').replace(/\/$/, '');
+  const control = controlPlaneInternalUrl();
   const headers = new Headers();
   const token = request.cookies.get('mm_player_session')?.value;
   if (token) headers.set('authorization', `Bearer ${token}`);

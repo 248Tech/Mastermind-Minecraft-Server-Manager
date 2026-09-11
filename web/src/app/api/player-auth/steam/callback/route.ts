@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { controlPlaneInternalUrl } from '../../../../../lib/control-plane';
 import { readSteamState, requestOrigin } from '../../../../../lib/player-auth';
 
 export async function GET(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   returnTo.searchParams.set('state', stateText);
   const openid: Record<string, string> = {};
   request.nextUrl.searchParams.forEach((value, key) => { if (key.startsWith('openid.')) openid[key] = value; });
-  const control = (process.env.CONTROL_PLANE_INTERNAL_URL || 'http://control-plane:3001').replace(/\/$/, '');
+  const control = controlPlaneInternalUrl();
   const verified = await fetch(`${control}/api/player-auth/steam/verify`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, cache: 'no-store',
     body: JSON.stringify({ serverInstanceId: state.serverInstanceId, returnTo: returnTo.toString(), openid }),

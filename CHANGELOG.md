@@ -1,5 +1,20 @@
 ﻿# Changelog
 
+## [0.16.1] - 2026-09-10
+
+### Fixed
+
+- Player portal BFF no longer defaults to Docker-only `http://control-plane:3001` (broke local shop load + register).
+- Portal register/login prefers stable `uuid:` player rows when duplicate name stubs exist.
+- Public live map no longer requires sign-in; clearer empty state when BlueMap/Dynmap URL is unset.
+- Discovery no longer persists loopback (`127.0.0.1`) map URLs as dashboard embeds.
+- Staff dashboard register form enforces 12-character password minimum.
+
+### Added
+
+- `GET /api/public/map` (+ web BFF) for anonymous map embed lookup.
+- `web/src/lib/control-plane.ts` shared internal control-plane URL helper.
+
 ## [0.16.0] - 2026-09-10
 
 ### Added

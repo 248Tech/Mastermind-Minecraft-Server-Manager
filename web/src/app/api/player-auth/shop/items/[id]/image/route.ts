@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server';
+import { controlPlaneInternalUrl } from '../../../../../../../lib/control-plane';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   if (!/^[a-z0-9_-]{10,40}$/i.test(id)) return Response.json({ message: 'Item not found' }, { status: 404 });
-  const control = (process.env.CONTROL_PLANE_INTERNAL_URL || 'http://control-plane:3001').replace(/\/$/, '');
+  const control = controlPlaneInternalUrl();
   const size = request.nextUrl.searchParams.get('size');
   const query = size === 'thumb' ? '?size=thumb' : '';
   const token = request.cookies.get('mm_player_session')?.value;

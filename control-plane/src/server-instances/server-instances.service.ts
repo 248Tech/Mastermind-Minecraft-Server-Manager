@@ -175,7 +175,11 @@ export class ServerInstancesService {
 
   private mapEmbedHint(config: Record<string, unknown> | null | undefined): string | null {
     const hint = config?.map_embed_hint;
-    return typeof hint === 'string' && hint.trim() ? hint.trim() : null;
+    if (typeof hint !== 'string' || !hint.trim()) return null;
+    const url = hint.trim();
+    // Loopback embeds only work on the game host browser — never persist for dashboard iframes.
+    if (/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(url)) return null;
+    return url;
   }
 
   async update(

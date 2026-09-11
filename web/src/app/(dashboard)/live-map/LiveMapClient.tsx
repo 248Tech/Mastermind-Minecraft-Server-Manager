@@ -92,14 +92,16 @@ export default function LiveMapClient() {
       {!error && !mapUrl && (
         <div style={emptyBox}>
           <strong style={{ color: '#e2e8f0' }}>No live map URL configured</strong>
-          <p style={{ margin: 0, maxWidth: 480, lineHeight: 1.5 }}>
-            Set a BlueMap or Dynmap embed URL on the server settings page
+          <p style={{ margin: 0, maxWidth: 520, lineHeight: 1.5 }}>
+            This pack does not include a web map out of the box. Install BlueMap or Dynmap, publish it
+            on a reachable URL (not <code>127.0.0.1</code>), then set <em>Live map URL</em> on the
+            server settings page
             {server ? (
               <>
                 {' '}(<a href={`/servers/${server.id}`} style={{ color: '#818cf8' }}>{server.name}</a>)
               </>
             ) : null}
-            , then return here.
+            .
           </p>
           {server && (
             <a href={`/servers/${server.id}`} style={{ color: '#818cf8' }}>Open server settings</a>

@@ -87,9 +87,40 @@ export class PlayerAuthService {
       });
       if (server) return server;
     }
-    const servers = await this.prisma.serverInstance.findMany({ take: 2, select: { id: true, orgId: true, name: true } });
+    const minecraft = await this.prisma.serverInstance.findMany({
+      where: { gameType: { slug: 'minecraft' } },
+      select: { id: true, orgId: true, name: true },
+      take: 2,
+      orderBy: { createdAt: 'asc' },
+    });
+    if (minecraft.length === 1) return minecraft[0];
+    if (minecraft.length > 1) {
+      throw new ServiceUnavailableException('Player portal server is not configured');
+    }
+    const servers = await this.prisma.serverInstance.findMany({
+      take: 2,
+      select: { id: true, orgId: true, name: true },
+      orderBy: { createdAt: 'asc' },
+    });
     if (servers.length === 1) return servers[0];
     throw new ServiceUnavailableException('Player portal server is not configured');
+  }
+
+  /** Public map embed for player portal (no session required). */
+  async publicMap() {
+    const server = await this.portalServer();
+    const row = await this.prisma.serverInstance.findFirst({
+      where: { id: server.id },
+      select: { id: true, name: true, mapEmbedUrl: true },
+    });
+    const mapEmbedUrl = row?.mapEmbedUrl?.trim() || null;
+    return {
+      ok: true as const,
+      serverId: server.id,
+      serverName: row?.name || server.name,
+      mapEmbedUrl,
+      configured: Boolean(mapEmbedUrl),
+    };
   }
 
   async shopStatus() {
@@ -184,16 +215,23 @@ export class PlayerAuthService {
     const server = await this.portalServer();
     const matches = await this.prisma.player.findMany({
       where: { serverInstanceId: server.id, name: { equals: name, mode: 'insensitive' } },
-      select: { id: true, name: true, steamId: true, portalPasswordHash: true, serverInstance: { select: { name: true } } },
-      take: 3,
+      select: {
+        id: true,
+        name: true,
+        steamId: true,
+        identityKey: true,
+        portalPasswordHash: true,
+        serverInstance: { select: { name: true } },
+      },
+      take: 8,
     });
     if (matches.length === 0) {
       throw new ConflictException('That Minecraft name has not been seen on this server yet. Join the game once, then create an account.');
     }
-    if (matches.length > 1) {
+    const player = pickPortalPlayerMatch(matches);
+    if (!player) {
       throw new ConflictException('That name matches more than one player record. Contact staff for help.');
     }
-    const player = matches[0];
     if (player.portalPasswordHash) {
       throw new ConflictException('An account already exists for that name. Sign in instead.');
     }
@@ -211,10 +249,17 @@ export class PlayerAuthService {
     const server = await this.portalServer();
     const matches = await this.prisma.player.findMany({
       where: { serverInstanceId: server.id, name: { equals: name, mode: 'insensitive' } },
-      select: { id: true, name: true, steamId: true, portalPasswordHash: true, serverInstance: { select: { name: true } } },
-      take: 3,
+      select: {
+        id: true,
+        name: true,
+        steamId: true,
+        identityKey: true,
+        portalPasswordHash: true,
+        serverInstance: { select: { name: true } },
+      },
+      take: 8,
     });
-    const player = matches.length === 1 ? matches[0] : null;
+    const player = pickPortalPlayerMatch(matches);
     const valid = verifyPassword(password, player?.portalPasswordHash || DUMMY_PASSWORD_HASH);
     if (!player || !player.portalPasswordHash || !valid) {
       throw new UnauthorizedException('In-game name or password is incorrect');
@@ -426,4 +471,21 @@ export class PlayerAuthService {
     }
     throw new GatewayTimeoutException('The game did not answer in time');
   }
+}
+
+/** Prefer stable Minecraft UUID rows over temporary name: roster stubs when names collide. */
+function pickPortalPlayerMatch<T extends { identityKey: string; steamId: string | null; portalPasswordHash: string | null }>(
+  matches: T[],
+): T | null {
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0];
+  const uuidRows = matches.filter((row) => row.identityKey.toLowerCase().startsWith('uuid:'));
+  if (uuidRows.length === 1) return uuidRows[0];
+  const withSteam = matches.filter((row) => Boolean(row.steamId));
+  if (withSteam.length === 1) return withSteam[0];
+  const withPassword = matches.filter((row) => Boolean(row.portalPasswordHash));
+  if (withPassword.length === 1) return withPassword[0];
+  const nonNameStub = matches.filter((row) => !row.identityKey.toLowerCase().startsWith('name:'));
+  if (nonNameStub.length === 1) return nonNameStub[0];
+  return null;
 }

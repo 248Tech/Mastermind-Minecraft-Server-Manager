@@ -3,15 +3,12 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { PortalFrame } from '../PortalFrame';
 
-type Profile = {
-  name: string;
-  steamId?: string | null;
+type PublicMap = {
+  ok?: boolean;
   serverName?: string;
-  online?: boolean;
-  auth?: string;
-  isAdmin?: boolean;
   mapEmbedUrl?: string | null;
-  donation?: { supporter?: boolean; checkoutEnabled?: boolean };
+  configured?: boolean;
+  message?: string;
 };
 
 const emptyBox: CSSProperties = {
@@ -27,25 +24,25 @@ const emptyBox: CSSProperties = {
 };
 
 export default function PlayerMapClient() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [map, setMap] = useState<PublicMap | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    fetch('/api/player-auth/me', { cache: 'no-store' })
+    fetch('/api/public/map', { cache: 'no-store' })
       .then(async (response) => {
-        if (!response.ok) throw new Error('Sign in to view the map');
-        return response.json() as Promise<Profile>;
+        const data = await response.json().catch(() => ({})) as PublicMap;
+        if (!response.ok) throw new Error(data.message || 'Could not load map');
+        return data;
       })
-      .then((next) => {
+      .then((data) => {
         if (!active) return;
-        setProfile(next);
+        setMap(data);
         setError('');
       })
       .catch((err) => {
         if (!active) return;
-        setProfile(null);
         setError(err instanceof Error ? err.message : 'Could not load map');
       })
       .finally(() => {
@@ -54,35 +51,48 @@ export default function PlayerMapClient() {
     return () => { active = false; };
   }, []);
 
-  const mapUrl = profile?.mapEmbedUrl?.trim() || '';
+  const mapUrl = map?.mapEmbedUrl?.trim() || '';
 
   return (
-    <PortalFrame profile={profile} wide maxWidth={1400}>
-      {loading && <p style={{ color: '#94a3b8', padding: '2rem' }}>Loading player map…</p>}
-      {!loading && error && <p style={{ color: '#f87171', padding: '2rem' }}>{error}</p>}
-      {!loading && !error && !mapUrl && (
-        <div style={emptyBox}>
-          <strong style={{ color: '#e2e8f0', display: 'block', marginBottom: 8 }}>Map not configured</strong>
-          An administrator needs to set a BlueMap or Dynmap URL for this Minecraft server.
-        </div>
-      )}
-      {!loading && !error && mapUrl && (
-        <div style={{ padding: '12px 18px 18px', height: 'calc(100vh - 64px)', boxSizing: 'border-box' }}>
+    <PortalFrame>
+      <div style={{ padding: '1.25rem 1rem 2rem', maxWidth: 1100, margin: '0 auto' }}>
+        <h1 style={{ margin: '0 0 6px', color: '#f1f5f9', fontSize: '1.35rem' }}>
+          {map?.serverName ? `${map.serverName} map` : 'Live map'}
+        </h1>
+        <p style={{ margin: '0 0 1rem', color: '#64748b', fontSize: '.85rem' }}>
+          Public BlueMap / Dynmap embed for this server.
+        </p>
+        {loading && <p style={{ color: '#94a3b8' }}>Loading map…</p>}
+        {error && <div style={emptyBox}>{error}</div>}
+        {!loading && !error && !mapUrl && (
+          <div style={emptyBox}>
+            <strong style={{ color: '#e2e8f0' }}>Map not configured</strong>
+            <p style={{ margin: '8px 0 0' }}>
+              ATM10 does not ship a web map by default. Install BlueMap (or Dynmap), expose it on a
+              public URL, then set <em>Live map URL</em> under Servers → Manage in the dashboard.
+            </p>
+            <p style={{ margin: '12px 0 0', fontSize: 13 }}>
+              Loopback URLs like <code>http://127.0.0.1:8100</code> only work on the game host — use
+              your public host or a reverse proxy.
+            </p>
+          </div>
+        )}
+        {!loading && mapUrl && (
           <iframe
-            title={`${profile?.serverName || 'Server'} map`}
+            title={`${map?.serverName || 'Server'} live map`}
             src={mapUrl}
             style={{
               width: '100%',
-              height: '100%',
-              border: '1px solid #292936',
+              minHeight: '70vh',
+              border: '1px solid #1e1e2a',
               borderRadius: 10,
               background: '#0a0a10',
             }}
             allow="fullscreen"
             referrerPolicy="no-referrer"
           />
-        </div>
-      )}
+        )}
+      </div>
     </PortalFrame>
   );
 }

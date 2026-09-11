@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { controlPlaneInternalUrl } from '../../../../lib/control-plane';
 import { parsePlayerReturnPath, requestOrigin } from '../../../../lib/player-auth';
 
 async function nameAuth(request: NextRequest, path: 'login' | 'register') {
   const publicOrigin = requestOrigin(request);
   const body = await request.json().catch(() => ({})) as { name?: unknown; password?: unknown; next?: unknown };
-  const control = (process.env.CONTROL_PLANE_INTERNAL_URL || 'http://control-plane:3001').replace(/\/$/, '');
+  const control = controlPlaneInternalUrl();
   const response = await fetch(`${control}/api/player-auth/${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

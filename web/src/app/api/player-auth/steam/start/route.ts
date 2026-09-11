@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { makeSteamState, requestOrigin } from '../../../../../lib/player-auth';
+import { controlPlaneInternalUrl } from '../../../../../lib/control-plane';
 
 const SELECT = 'http://specs.openid.net/auth/2.0/identifier_select';
 export async function GET(request: NextRequest) {
   const publicOrigin = requestOrigin(request);
-  const serverInstanceId = request.nextUrl.searchParams.get('server') || process.env.PLAYER_PORTAL_SERVER_ID || '';
-  if (!/^c[a-z0-9]{10,40}$/i.test(serverInstanceId)) return NextResponse.json({ message: 'Player portal server is not configured' }, { status: 503 });
+  let serverInstanceId = request.nextUrl.searchParams.get('server') || process.env.PLAYER_PORTAL_SERVER_ID || '';
+  if (!/^c[a-z0-9]{10,40}$/i.test(serverInstanceId)) {
+    const control = controlPlaneInternalUrl();
+    const landing = await fetch(`${control}/api/public/landing`, { cache: 'no-store' }).catch(() => null);
+    const data = landing ? await landing.json().catch(() => null) as { servers?: { id?: string }[] } | null : null;
+    serverInstanceId = data?.servers?.[0]?.id || '';
+  }
+  if (!/^c[a-z0-9]{10,40}$/i.test(serverInstanceId)) {
+    return NextResponse.json({ message: 'Player portal server is not configured' }, { status: 503 });
+  }
   const next = request.nextUrl.searchParams.get('next') || '/player/map';
   const { state, nonce } = makeSteamState(serverInstanceId, next);
   const callback = new URL('/api/player-auth/steam/callback', publicOrigin);

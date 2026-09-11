@@ -216,10 +216,12 @@ export default function LoginPage() {
             </label>
             <input
               type="password"
-              placeholder="••••••••"
+              placeholder={mode === 'register' ? 'At least 12 characters' : '••••••••'}
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              minLength={mode === 'register' ? 12 : 1}
+              maxLength={128}
               style={inputStyle}
               onFocus={e => {
                 e.target.style.borderColor = '#6366f1';
@@ -230,6 +232,11 @@ export default function LoginPage() {
                 e.target.style.boxShadow = 'none';
               }}
             />
+            {mode === 'register' && (
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                Dashboard passwords must be at least 12 characters.
+              </p>
+            )}
           </div>
 
           {mode==='login'&&<div><label style={{display:'block',fontSize:'.8rem',color:'#94a3b8',marginBottom:'.375rem',fontWeight:500}}>Security check: {mathPrompt}</label><input inputMode="numeric" autoComplete="off" value={mathAnswer} onChange={e=>setMathAnswer(e.target.value)} required placeholder="Answer" style={inputStyle}/></div>}
