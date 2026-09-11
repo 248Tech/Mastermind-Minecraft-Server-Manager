@@ -184,12 +184,24 @@ export class DonationsService {
     if (!paid) return;
     const player = await this.prisma.player.findFirst({
       where: { id: paid.playerId, steamId: paid.steamId, serverInstanceId: paid.serverInstanceId, orgId: paid.orgId },
-      select: { id: true, name: true, orgId: true, supporter: true, supporterSince: true, totalDonatedCents: true },
+      select: {
+        id: true,
+        name: true,
+        orgId: true,
+        steamId: true,
+        identityKey: true,
+        online: true,
+        lifetimeSeconds: true,
+        supporter: true,
+        supporterSince: true,
+        totalDonatedCents: true,
+      },
     });
     if (!player) {
       this.logger.warn(`Ignoring paid checkout ${paid.sessionId}: player no longer registered`);
       return;
     }
+    const previousCents = player.totalDonatedCents;
     const existing = await this.prisma.donation.findUnique({
       where: { stripeCheckoutSessionId: paid.sessionId },
       select: { id: true },
@@ -240,6 +252,20 @@ export class DonationsService {
     }
     await this.notifyDiscord(player.orgId, player.name, paid.amountCents, lineRows.map((line) => line.itemName));
     await this.jobs.enqueueShopGrants(paid.orgId, paid.serverInstanceId, player.id, paid.steamId).catch(() => undefined);
+    await this.triggers.evaluateDonationTotal(
+      paid.orgId,
+      paid.serverInstanceId,
+      {
+        id: player.id,
+        name: player.name,
+        steamId: player.steamId,
+        identityKey: player.identityKey,
+        online: player.online,
+        lifetimeSeconds: player.lifetimeSeconds,
+      },
+      previousCents,
+      next.player.totalDonatedCents,
+    ).catch(() => undefined);
   }
 
   private async buildDonationLines(paid: {

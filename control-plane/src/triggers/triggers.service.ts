@@ -5,16 +5,21 @@ import { JobsService } from '../jobs/jobs.service';
 import {
   TRIGGER_ACTION_GRANT_ITEMS,
   TRIGGER_ACTIONS,
+  TRIGGER_EVENT_DONATION_TOTAL,
   TRIGGER_EVENT_FIRST_JOIN,
   TRIGGER_EVENT_PLAYTIME,
   TRIGGER_EVENTS,
+  crossedDonationTotalCents,
   crossedPlaytimeHours,
+  eventKeyForDonationTotal,
   eventKeyForFirstJoin,
   eventKeyForPlaytime,
   grantItemsSummary,
+  parseDonationTotalConfig,
   parseEventConfig,
   parseGrantItemsActionConfig,
   parsePlaytimeConfig,
+  type DonationTotalConfig,
   type PlaytimeConfig,
 } from './catalog';
 import { MAX_GRANT_ATTEMPTS, classifyGrantOutput } from '../donations/shop-grants';
@@ -178,6 +183,29 @@ export class TriggersService {
     }
   }
 
+  /** Fire donation milestones when cumulative donated cents cross configured dollar thresholds. */
+  async evaluateDonationTotal(
+    orgId: string,
+    serverInstanceId: string,
+    player: TriggerPlayer,
+    previousCents: number,
+    nextCents: number,
+  ) {
+    const triggers = await this.prisma.trigger.findMany({
+      where: { orgId, serverInstanceId, enabled: true, eventType: TRIGGER_EVENT_DONATION_TOTAL },
+    });
+    for (const trigger of triggers) {
+      let config: DonationTotalConfig;
+      try {
+        config = parseDonationTotalConfig(trigger.eventConfig);
+      } catch {
+        continue;
+      }
+      if (!crossedDonationTotalCents(previousCents, nextCents, config.dollars)) continue;
+      await this.fireOnce(trigger, player, eventKeyForDonationTotal(config.dollars)).catch(() => undefined);
+    }
+  }
+
   async completeItemGrant(payload: Record<string, unknown>, runStatus: string, output: string) {
     const fireId = typeof payload.triggerFireId === 'string' ? payload.triggerFireId : '';
     if (!fireId) return;
@@ -290,6 +318,24 @@ export class TriggersService {
       for (const player of players) {
         await this.fireOnce(trigger, player, eventKeyForPlaytime(config.hours)).catch(() => undefined);
       }
+      return;
+    }
+    if (trigger.eventType === TRIGGER_EVENT_DONATION_TOTAL) {
+      let config: DonationTotalConfig;
+      try {
+        config = parseDonationTotalConfig(trigger.eventConfig);
+      } catch {
+        return;
+      }
+      const target = config.dollars * 100;
+      const players = await this.prisma.player.findMany({
+        where: { orgId: trigger.orgId, serverInstanceId: trigger.serverInstanceId, totalDonatedCents: { gte: target } },
+        select: { id: true, name: true, steamId: true, identityKey: true, online: true, lifetimeSeconds: true },
+        take: 500,
+      });
+      for (const player of players) {
+        await this.fireOnce(trigger, player, eventKeyForDonationTotal(config.dollars)).catch(() => undefined);
+      }
     }
   }
 
@@ -352,6 +398,9 @@ export class TriggersService {
     }
 
     const hoursHint = eventKey.startsWith('playtime:') ? eventKey.slice('playtime:'.length) : '';
+    const dollarsHint = eventKey.startsWith('donation:')
+      ? String(Math.floor(Number(eventKey.slice('donation:'.length)) / 100) || '')
+      : '';
     const uuid = player.identityKey.startsWith('uuid:') ? player.identityKey.slice(5) : undefined;
     const queued = await this.jobs.enqueueInternalJob(trigger.orgId, trigger.createdById, trigger.serverInstanceId, 'TRIGGER_GRANT_ITEMS', {
       triggerId: trigger.id,
@@ -367,6 +416,7 @@ export class TriggersService {
       message: action.message
         .replaceAll('{name}', player.name)
         .replaceAll('{hours}', hoursHint)
+        .replaceAll('{dollars}', dollarsHint)
         .replaceAll('{items}', summary),
     });
     if (recordFire && fireId) {

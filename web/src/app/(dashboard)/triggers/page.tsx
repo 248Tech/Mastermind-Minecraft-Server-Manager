@@ -38,6 +38,7 @@ const emptyCatalog: TriggerCatalog = {
   events: [
     { type: 'player_first_join', label: 'First join' },
     { type: 'player_playtime', label: 'Lifetime playtime' },
+    { type: 'player_donation_total', label: 'Lifetime donation total' },
   ],
   actions: [{ type: 'grant_items', label: 'Grant items' }],
 };
@@ -46,6 +47,7 @@ type FormState = {
   name: string;
   eventType: string;
   hours: string;
+  dollars: string;
   grants: GrantDraft[];
   notifyPlayer: boolean;
   message: string;
@@ -56,6 +58,7 @@ const emptyForm = (): FormState => ({
   name: '',
   eventType: 'player_first_join',
   hours: '24',
+  dollars: '25',
   grants: [emptyGrant()],
   notifyPlayer: true,
   message: 'You received a reward.',
@@ -67,6 +70,10 @@ function eventSummary(trigger: TriggerRecord) {
   if (trigger.eventType === 'player_playtime') {
     const hours = Number(trigger.eventConfig?.hours);
     return Number.isInteger(hours) ? `Playtime ≥ ${hours}h` : 'Playtime';
+  }
+  if (trigger.eventType === 'player_donation_total') {
+    const dollars = Number(trigger.eventConfig?.dollars);
+    return Number.isInteger(dollars) ? `Donation ≥ $${dollars}` : 'Donation total';
   }
   const level = Number(trigger.eventConfig?.level);
   if (Number.isInteger(level)) return `Level (legacy) ${level}`;
@@ -155,12 +162,17 @@ export default function TriggersPage() {
     setCreateError('');
     try {
       const items = form.grants.filter((row) => row.name.trim()).map((row) => ({ name: row.name.trim(), quantity: row.quantity }));
+      const eventConfig = form.eventType === 'player_playtime'
+        ? { hours: Number(form.hours) || 1 }
+        : form.eventType === 'player_donation_total'
+          ? { dollars: Number(form.dollars) || 1 }
+          : {};
       await api.post(`/api/orgs/${orgId}/triggers`, {
         name: form.name.trim(),
         serverInstanceId: serverId,
         enabled: true,
         eventType: form.eventType,
-        eventConfig: form.eventType === 'player_playtime' ? { hours: Number(form.hours) || 1 } : {},
+        eventConfig,
         actionType: 'grant_items',
         actionConfig: {
           items,
@@ -233,7 +245,7 @@ export default function TriggersPage() {
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#f1f5f9' }}>Triggers</h1>
         <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-          Grant items on first join or when a player reaches lifetime playtime milestones.
+          Grant items on first join, lifetime playtime milestones, or lifetime donation totals.
         </p>
       </div>
       {error && (
@@ -274,6 +286,12 @@ export default function TriggersPage() {
                 <div>
                   <label style={labelStyle}>Hours played</label>
                   <input style={inputStyle} type="number" min={1} max={10000} value={form.hours} onChange={(e) => setForm({ ...form, hours: e.target.value })} required />
+                </div>
+              )}
+              {form.eventType === 'player_donation_total' && (
+                <div>
+                  <label style={labelStyle}>Donation total ($)</label>
+                  <input style={inputStyle} type="number" min={1} max={500} value={form.dollars} onChange={(e) => setForm({ ...form, dollars: e.target.value })} required />
                 </div>
               )}
             </div>

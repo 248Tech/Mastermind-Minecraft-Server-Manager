@@ -1,5 +1,18 @@
 ﻿# Changelog
 
+## [0.16.0] - 2026-09-10
+
+### Added
+
+- Trigger event **Lifetime donation total** — grant items when cumulative donations cross a dollar threshold ($1–$500).
+- Stripe checkout completion evaluates donation milestones (offline → pending, retry on join).
+- Apply-to-existing backfill for players already at/above the threshold.
+- Message placeholder `{dollars}` for donation trigger chat notify.
+
+### Changed
+
+- Triggers dashboard create form and copy include donation-total milestones.
+
 ## [0.15.0] - 2026-09-10
 
 ### Added
