@@ -1,5 +1,12 @@
 ﻿# Changelog
 
+## [0.16.2] - 2026-09-10
+
+### Changed
+
+- Agent map discovery uses `MASTERMIND_MAP_PUBLIC_BASE` / `MASTERMIND_MAP_PUBLIC_HOST` for BlueMap/Dynmap embeds (avoids unusable `127.0.0.1` URLs).
+- Loopback map hints only when `MASTERMIND_MAP_ALLOW_LOOPBACK=1`.
+
 ## [0.16.1] - 2026-09-10
 
 ### Fixed

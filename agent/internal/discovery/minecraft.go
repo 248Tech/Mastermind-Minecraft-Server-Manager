@@ -98,7 +98,8 @@ func DiscoverMinecraft(cfg config.MinecraftDiscoveryCfg) (*MinecraftResult, erro
 	return result, nil
 }
 
-// detectMapEmbedHint looks for BlueMap/Dynmap/Squaremap under the install and returns a local URL hint.
+// detectMapEmbedHint looks for BlueMap/Dynmap/Squaremap under the install and returns
+// a browser-reachable embed URL when possible.
 func detectMapEmbedHint(installPath, modsPath string) string {
 	lowerNames := map[string]bool{}
 	for _, dir := range []string{modsPath, filepath.Join(installPath, "mods"), filepath.Join(installPath, "plugins")} {
@@ -118,17 +119,38 @@ func detectMapEmbedHint(installPath, modsPath string) string {
 		}
 		return false
 	}
-	// Config dirs are a stronger signal than jar name alone.
+
+	port := 0
+	kind := ""
 	if _, err := os.Stat(filepath.Join(installPath, "config", "bluemap")); err == nil || has("bluemap") {
-		port := readIntFromFile(filepath.Join(installPath, "config", "bluemap", "webserver.conf"), "port:", 8100)
-		return fmt.Sprintf("http://127.0.0.1:%d/", port)
+		port = readIntFromFile(filepath.Join(installPath, "config", "bluemap", "webserver.conf"), "port:", 8100)
+		kind = "bluemap"
+	} else if _, err := os.Stat(filepath.Join(installPath, "dynmap")); err == nil || has("dynmap") {
+		port = readIntFromFile(filepath.Join(installPath, "dynmap", "configuration.txt"), "webserver-port:", 8123)
+		kind = "dynmap"
+	} else if has("squaremap") {
+		port = 8080
+		kind = "squaremap"
 	}
-	if _, err := os.Stat(filepath.Join(installPath, "dynmap")); err == nil || has("dynmap") {
-		port := readIntFromFile(filepath.Join(installPath, "dynmap", "configuration.txt"), "webserver-port:", 8123)
-		return fmt.Sprintf("http://127.0.0.1:%d/", port)
+	if kind == "" || port <= 0 {
+		return ""
 	}
-	if has("squaremap") {
-		return "http://127.0.0.1:8080/"
+
+	// Prefer an explicitly public base URL (e.g. http://10.0.0.85:8100/ or https://map.example.com/).
+	if base := strings.TrimSpace(os.Getenv("MASTERMIND_MAP_PUBLIC_BASE")); base != "" {
+		if !strings.HasSuffix(base, "/") {
+			base += "/"
+		}
+		return base
+	}
+	if host := strings.TrimSpace(os.Getenv("MASTERMIND_MAP_PUBLIC_HOST")); host != "" {
+		host = strings.TrimPrefix(strings.TrimPrefix(host, "http://"), "https://")
+		host = strings.TrimSuffix(host, "/")
+		return fmt.Sprintf("http://%s:%d/", host, port)
+	}
+	// Loopback only when opted in — dashboards opened from other machines cannot use 127.0.0.1.
+	if os.Getenv("MASTERMIND_MAP_ALLOW_LOOPBACK") == "1" {
+		return fmt.Sprintf("http://127.0.0.1:%d/", port)
 	}
 	return ""
 }
