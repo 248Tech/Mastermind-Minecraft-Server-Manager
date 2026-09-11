@@ -341,7 +341,12 @@ export default function TriggersPage() {
                           {fires[trigger.id].length === 0
                             ? 'No grants yet.'
                             : fires[trigger.id].map((fire) => (
-                              <div key={fire.id}>{fire.player.name} · {fire.eventKey} · {fire.status} · {new Date(fire.createdAt).toLocaleString()}</div>
+                              <div key={fire.id}>
+                                {fire.player.name} · {fire.eventKey} · {fire.status}
+                                {typeof fire.attempts === 'number' ? ` · try ${fire.attempts}` : ''}
+                                {fire.lastError ? ` · ${fire.lastError}` : ''}
+                                {' · '}{new Date(fire.createdAt).toLocaleString()}
+                              </div>
                             ))}
                         </div>
                       )}

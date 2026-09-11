@@ -17,7 +17,7 @@ import {
   parsePlaytimeConfig,
   type PlaytimeConfig,
 } from './catalog';
-import { classifyGrantOutput } from '../donations/shop-grants';
+import { MAX_GRANT_ATTEMPTS, classifyGrantOutput } from '../donations/shop-grants';
 
 export type TriggerInput = {
   name: string;
@@ -132,7 +132,12 @@ export class TriggersService {
     }
     if (input.enabled != null) data.enabled = input.enabled;
     if (Object.keys(data).length === 0) return current;
-    return this.prisma.trigger.update({ where: { id: current.id }, data });
+    const updated = await this.prisma.trigger.update({ where: { id: current.id }, data });
+    // Re-enable with apply-to-existing: backfill anyone who still lacks a fire row.
+    if (current.enabled === false && updated.enabled && updated.applyToExisting) {
+      await this.backfillTrigger(updated).catch(() => undefined);
+    }
+    return updated;
   }
 
   async remove(orgId: string, id: string) {
@@ -176,15 +181,46 @@ export class TriggersService {
   async completeItemGrant(payload: Record<string, unknown>, runStatus: string, output: string) {
     const fireId = typeof payload.triggerFireId === 'string' ? payload.triggerFireId : '';
     if (!fireId) return;
+    const fire = await this.prisma.triggerFire.findUnique({ where: { id: fireId } });
+    if (!fire) return;
     const outcome = classifyGrantOutput(output, runStatus);
-    const status = outcome === 'delivered' ? 'delivered' : outcome === 'failed' ? 'failed' : 'pending';
-    await this.prisma.triggerFire.updateMany({ where: { id: fireId }, data: { status } });
+    const attempts = fire.attempts;
+    const errText = String(output || '').trim().slice(0, 500) || null;
+    if (outcome === 'delivered') {
+      await this.prisma.triggerFire.update({
+        where: { id: fireId },
+        data: { status: 'delivered', lastError: null },
+      });
+      return;
+    }
+    if (outcome === 'failed' || attempts >= MAX_GRANT_ATTEMPTS) {
+      await this.prisma.triggerFire.update({
+        where: { id: fireId },
+        data: { status: 'failed', lastError: errText },
+      });
+      return;
+    }
+    await this.prisma.triggerFire.update({
+      where: { id: fireId },
+      data: { status: 'pending', lastError: errText },
+    });
   }
 
   async retryPendingItemGrants(orgId: string, serverInstanceId: string) {
+    const staleBefore = new Date(Date.now() - 5 * 60_000);
+    await this.prisma.triggerFire.updateMany({
+      where: {
+        status: 'queued',
+        attempts: { lt: MAX_GRANT_ATTEMPTS },
+        createdAt: { lt: staleBefore },
+        trigger: { orgId, serverInstanceId, enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
+      },
+      data: { status: 'pending', lastError: 'Stale queued grant; will retry' },
+    });
     const fires = await this.prisma.triggerFire.findMany({
       where: {
         status: 'pending',
+        attempts: { lt: MAX_GRANT_ATTEMPTS },
         trigger: { orgId, serverInstanceId, enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
         player: { online: true },
       },
@@ -204,6 +240,7 @@ export class TriggersService {
       where: {
         playerId,
         status: 'pending',
+        attempts: { lt: MAX_GRANT_ATTEMPTS },
         trigger: { enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
       },
       include: {
@@ -303,6 +340,17 @@ export class TriggersService {
       return;
     }
 
+    if (fireId) {
+      const existing = await this.prisma.triggerFire.findUnique({ where: { id: fireId } });
+      if (existing && existing.attempts >= MAX_GRANT_ATTEMPTS) {
+        await this.prisma.triggerFire.update({
+          where: { id: fireId },
+          data: { status: 'failed', lastError: existing.lastError || 'Max grant attempts exceeded' },
+        });
+        return;
+      }
+    }
+
     const hoursHint = eventKey.startsWith('playtime:') ? eventKey.slice('playtime:'.length) : '';
     const uuid = player.identityKey.startsWith('uuid:') ? player.identityKey.slice(5) : undefined;
     const queued = await this.jobs.enqueueInternalJob(trigger.orgId, trigger.createdById, trigger.serverInstanceId, 'TRIGGER_GRANT_ITEMS', {
@@ -324,7 +372,7 @@ export class TriggersService {
     if (recordFire && fireId) {
       await this.prisma.triggerFire.update({
         where: { id: fireId },
-        data: { jobId: queued.jobId, status: 'queued' },
+        data: { jobId: queued.jobId, status: 'queued', attempts: { increment: 1 }, lastError: null },
       });
       await this.prisma.trigger.update({
         where: { id: trigger.id },
@@ -333,7 +381,7 @@ export class TriggersService {
     } else if (fireId) {
       await this.prisma.triggerFire.update({
         where: { id: fireId },
-        data: { jobId: queued.jobId, status: 'queued' },
+        data: { jobId: queued.jobId, status: 'queued', attempts: { increment: 1 }, lastError: null },
       });
     }
   }

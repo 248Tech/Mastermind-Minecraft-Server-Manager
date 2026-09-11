@@ -565,6 +565,8 @@ model TriggerFire {
   eventKey  String   @map("event_key")
   jobId     String?  @map("job_id")
   status    String   @default("queued")
+  attempts  Int      @default(0)
+  lastError String?  @map("last_error")
   createdAt DateTime @default(now()) @map("created_at")
 
   trigger Trigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
@@ -572,6 +574,7 @@ model TriggerFire {
 
   @@unique([triggerId, playerId, eventKey])
   @@index([triggerId, createdAt(sort: Desc)])
+  @@index([status])
   @@map("trigger_fires")
 }
 

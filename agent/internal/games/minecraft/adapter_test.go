@@ -215,6 +215,37 @@ func TestGrantItemsFromPayload(t *testing.T) {
 	}
 }
 
+func TestGrantPlayerTargetPrefersNameThenUUID(t *testing.T) {
+	if got := grantPlayerTarget(map[string]interface{}{"name": "Steve"}); got != "Steve" {
+		t.Fatalf("name: %q", got)
+	}
+	if got := grantPlayerTarget(map[string]interface{}{
+		"uuid": "550e8400-e29b-41d4-a716-446655440000",
+	}); got != "550e8400-e29b-41d4-a716-446655440000" {
+		t.Fatalf("uuid: %q", got)
+	}
+	if got := grantPlayerTarget(map[string]interface{}{
+		"identityKey": "uuid:550e8400e29b41d4a716446655440000",
+	}); got != "550e8400e29b41d4a716446655440000" {
+		t.Fatalf("identityKey: %q", got)
+	}
+	if got := grantPlayerTarget(map[string]interface{}{"name": "all", "uuid": "not-a-uuid"}); got != "" {
+		t.Fatalf("expected empty, got %q", got)
+	}
+}
+
+func TestGrantOutputClassification(t *testing.T) {
+	if !grantOutputMeansOffline("No player was found") {
+		t.Fatal("offline")
+	}
+	if !grantOutputMeansDelivered("Gave 1 [Dirt] to Steve") {
+		t.Fatal("delivered")
+	}
+	if grantOutputMeansDelivered("") {
+		t.Fatal("empty should not deliver")
+	}
+}
+
 func TestLooksLikeChat(t *testing.T) {
 	if !looksLikeChat(`[Server thread/INFO]: <Steve> hello`) {
 		t.Fatal("expected chat")

@@ -117,6 +117,8 @@ export interface TriggerFireRecord {
   eventKey: string;
   status: string;
   jobId: string | null;
+  attempts?: number;
+  lastError?: string | null;
   createdAt: string;
   player: { id: string; name: string; steamId: string | null };
 }

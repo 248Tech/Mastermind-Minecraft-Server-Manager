@@ -1,5 +1,19 @@
 ﻿# Changelog
 
+## [0.15.0] - 2026-09-10
+
+### Added
+
+- Trigger grant delivery hardening: `attempts` / `last_error` on fires, max-attempt failure (same cap as shop grants), stale queued → pending retry.
+- Agent `GrantItems` falls back to player UUID when name is missing (`uuid` / `identityKey`).
+- Re-enabling an apply-to-existing trigger re-runs backfill for players still missing a fire row.
+- Grant log UI shows attempt count and last error.
+
+### Changed
+
+- Agent grant delivery requires RCON `Gave …` confirmation; offline / empty / invalid-item responses fail the job so CP can retry.
+- Smoke/ops: job status is polled via `GET …/jobs/runs/:runId` (create returns `jobId` + `jobRunId`).
+
 ## [0.14.0] - 2026-09-10
 
 ### Added
