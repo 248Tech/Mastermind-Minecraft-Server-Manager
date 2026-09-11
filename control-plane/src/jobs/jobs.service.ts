@@ -483,6 +483,16 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         },
       });
       if (!existing?.online) await this.prisma.playerSession.create({ data: { playerId: player.id, startedAt: now } });
+      if (!existing) {
+        await this.triggers.evaluateFirstJoin(orgId, serverInstanceId, {
+          id: player.id,
+          name: player.name,
+          steamId: player.steamId,
+          identityKey: player.identityKey,
+          online: player.online,
+          lifetimeSeconds: player.lifetimeSeconds,
+        }).catch(() => undefined);
+      }
       if (!existing?.online) {
         await this.triggers.retryPendingItemGrantsForPlayer(player.id).catch(() => undefined);
         const uuid = row.identityKey.startsWith('uuid:') ? row.identityKey.slice(5) : undefined;
@@ -494,15 +504,48 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
           minecraftUuid: uuid,
         }).catch(() => undefined);
       }
+      const sessionSeconds = player.currentSessionStartedAt
+        ? Math.max(0, Math.floor((now.getTime() - player.currentSessionStartedAt.getTime()) / 1000))
+        : 0;
+      const projectedLifetime = player.lifetimeSeconds + (player.online ? sessionSeconds : 0);
+      await this.triggers.evaluatePlaytime(
+        orgId,
+        serverInstanceId,
+        {
+          id: player.id,
+          name: player.name,
+          steamId: player.steamId,
+          identityKey: player.identityKey,
+          online: player.online,
+          lifetimeSeconds: projectedLifetime,
+        },
+        existing?.lifetimeSeconds ?? 0,
+        projectedLifetime,
+      ).catch(() => undefined);
     }
     const missing = await this.prisma.player.findMany({ where: { serverInstanceId, online: true, identityKey: { notIn: [...seen] } } });
     for (const player of missing) {
       const end = player.lastSeenAt < now ? player.lastSeenAt : now;
       const duration = player.currentSessionStartedAt ? Math.max(0, Math.floor((end.getTime() - player.currentSessionStartedAt.getTime()) / 1000)) : 0;
+      const previousLifetime = player.lifetimeSeconds;
       await this.prisma.$transaction([
         this.prisma.player.update({ where: { id: player.id }, data: { online: false, currentSessionStartedAt: null, lastLogoutAt: end, lifetimeSeconds: { increment: duration } } }),
         this.prisma.playerSession.updateMany({ where: { playerId: player.id, endedAt: null }, data: { endedAt: end, durationSeconds: duration } }),
       ]);
+      await this.triggers.evaluatePlaytime(
+        orgId,
+        serverInstanceId,
+        {
+          id: player.id,
+          name: player.name,
+          steamId: player.steamId,
+          identityKey: player.identityKey,
+          online: false,
+          lifetimeSeconds: previousLifetime + duration,
+        },
+        previousLifetime,
+        previousLifetime + duration,
+      ).catch(() => undefined);
       await this.alerts.sendMatchingRules('PLAYER_DISCONNECTED', {
         orgId,
         serverInstanceId,

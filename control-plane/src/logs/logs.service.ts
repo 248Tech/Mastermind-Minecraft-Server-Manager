@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { reconcileNameFallback } from '../players/player-identity';
 import { AlertsService } from '../alerts/alerts.service';
 import { JobsQueueService } from '../jobs/jobs-queue.service';
+import { TriggersService } from '../triggers/triggers.service';
 import { pruneMap } from '../common/ttl-map';
 
 type ModerationAction = 'log'|'warn'|'kick';
@@ -18,7 +19,12 @@ export class LogsService {
   private readonly chatSamples = new Map<string, number[]>();
   private readonly moderationCooldown = new Map<string, number>();
   private lastMapPrune = 0;
-  constructor(private readonly prisma: PrismaService, private readonly alerts: AlertsService, private readonly jobsQueue: JobsQueueService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly alerts: AlertsService,
+    private readonly jobsQueue: JobsQueueService,
+    @Inject(forwardRef(() => TriggersService)) private readonly triggers: TriggersService,
+  ) {}
 
   async append(hostId: string, serverInstanceId: string, content: string) {
     if (!content) return { ok: true };
@@ -211,7 +217,10 @@ export class LogsService {
           name: { equals: name, mode: 'insensitive' },
           identityKey: { startsWith: 'uuid:' },
         },
-        select: { identityKey: true, steamId: true, online: true, id: true, currentSessionStartedAt: true, lastSeenAt: true },
+        select: {
+          identityKey: true, steamId: true, online: true, id: true, name: true,
+          currentSessionStartedAt: true, lastSeenAt: true, lifetimeSeconds: true,
+        },
         orderBy: { lastSeenAt: 'desc' },
       });
       const identityKey = namedUuid?.identityKey ?? `name:${name.toLowerCase()}`;
@@ -226,8 +235,19 @@ export class LogsService {
           create: { orgId, serverInstanceId, identityKey, name, online: true, currentSessionStartedAt: now, lastSeenAt: now },
           update: { name, online: true, lastSeenAt: now, ...(!existing?.online ? { currentSessionStartedAt: now } : {}) },
         });
+        if (!existing) {
+          await this.triggers.evaluateFirstJoin(orgId, serverInstanceId, {
+            id: player.id,
+            name: player.name,
+            steamId: player.steamId,
+            identityKey: player.identityKey,
+            online: player.online,
+            lifetimeSeconds: player.lifetimeSeconds,
+          }).catch(() => undefined);
+        }
         if (!existing?.online) {
           await this.prisma.playerSession.create({ data: { playerId: player.id, startedAt: now } });
+          await this.triggers.retryPendingItemGrantsForPlayer(player.id).catch(() => undefined);
           await this.alerts.sendMatchingRules('PLAYER_CONNECTED', {
             orgId, serverInstanceId, serverInstanceName, playerName: name, minecraftUuid,
           }).catch(() => undefined);
@@ -235,10 +255,25 @@ export class LogsService {
       } else if (existing?.online) {
         const started = existing.currentSessionStartedAt;
         const duration = started ? Math.max(0, Math.floor((now.getTime() - started.getTime()) / 1000)) : 0;
+        const previousLifetime = existing.lifetimeSeconds;
         await this.prisma.$transaction([
           this.prisma.player.update({ where: { id: existing.id }, data: { online: false, lastSeenAt: now, currentSessionStartedAt: null, lastLogoutAt: now, lifetimeSeconds: { increment: duration } } }),
           this.prisma.playerSession.updateMany({ where: { playerId: existing.id, endedAt: null }, data: { endedAt: now, durationSeconds: duration } }),
         ]);
+        await this.triggers.evaluatePlaytime(
+          orgId,
+          serverInstanceId,
+          {
+            id: existing.id,
+            name: existing.name,
+            steamId: existing.steamId,
+            identityKey: existing.identityKey,
+            online: false,
+            lifetimeSeconds: previousLifetime + duration,
+          },
+          previousLifetime,
+          previousLifetime + duration,
+        ).catch(() => undefined);
         await this.alerts.sendMatchingRules('PLAYER_DISCONNECTED', {
           orgId, serverInstanceId, serverInstanceName, playerName: name, minecraftUuid, sessionSeconds: duration,
         }).catch(() => undefined);

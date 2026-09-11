@@ -1,12 +1,21 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { JobsService } from '../jobs/jobs.service';
 import {
   TRIGGER_ACTION_GRANT_ITEMS,
   TRIGGER_ACTIONS,
+  TRIGGER_EVENT_FIRST_JOIN,
+  TRIGGER_EVENT_PLAYTIME,
   TRIGGER_EVENTS,
+  crossedPlaytimeHours,
+  eventKeyForFirstJoin,
+  eventKeyForPlaytime,
   grantItemsSummary,
+  parseEventConfig,
   parseGrantItemsActionConfig,
+  parsePlaytimeConfig,
+  type PlaytimeConfig,
 } from './catalog';
 import { classifyGrantOutput } from '../donations/shop-grants';
 
@@ -21,7 +30,14 @@ export type TriggerInput = {
   applyToExisting?: boolean;
 };
 
-const NO_EVENTS_MESSAGE = 'Level triggers require Minecraft progression sync (not yet available)';
+type TriggerPlayer = {
+  id: string;
+  name: string;
+  steamId: string | null;
+  identityKey: string;
+  online: boolean;
+  lifetimeSeconds: number;
+};
 
 @Injectable()
 export class TriggersService {
@@ -51,8 +67,49 @@ export class TriggersService {
     });
   }
 
-  async create(_orgId: string, _userId: string, _input: TriggerInput) {
-    throw new BadRequestException(NO_EVENTS_MESSAGE);
+  async create(orgId: string, userId: string, input: TriggerInput) {
+    const name = input.name?.trim();
+    if (!name || name.length > 80) throw new BadRequestException('Name is required (max 80 characters)');
+    if (!TRIGGER_EVENTS.some((event) => event.type === input.eventType)) {
+      throw new BadRequestException('Unsupported trigger event');
+    }
+    if (input.actionType !== TRIGGER_ACTION_GRANT_ITEMS) {
+      throw new BadRequestException('Unsupported trigger action');
+    }
+    const server = await this.prisma.serverInstance.findFirst({
+      where: { id: input.serverInstanceId, orgId },
+      select: { id: true },
+    });
+    if (!server) throw new NotFoundException('Server instance not found');
+
+    let eventConfig: Prisma.InputJsonValue;
+    let actionConfig: Prisma.InputJsonValue;
+    try {
+      eventConfig = parseEventConfig(input.eventType, input.eventConfig) as Prisma.InputJsonValue;
+      actionConfig = parseGrantItemsActionConfig(input.actionConfig) as unknown as Prisma.InputJsonValue;
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : 'Invalid trigger config');
+    }
+
+    const trigger = await this.prisma.trigger.create({
+      data: {
+        orgId,
+        serverInstanceId: server.id,
+        createdById: userId,
+        name,
+        enabled: input.enabled !== false,
+        eventType: input.eventType,
+        eventConfig,
+        actionType: TRIGGER_ACTION_GRANT_ITEMS,
+        actionConfig,
+        applyToExisting: Boolean(input.applyToExisting),
+      },
+    });
+
+    if (trigger.applyToExisting && trigger.enabled) {
+      await this.backfillTrigger(trigger).catch(() => undefined);
+    }
+    return trigger;
   }
 
   async update(orgId: string, id: string, input: Partial<TriggerInput>) {
@@ -65,7 +122,7 @@ export class TriggersService {
       || input.serverInstanceId != null
       || input.applyToExisting != null
     ) {
-      throw new BadRequestException(NO_EVENTS_MESSAGE);
+      throw new BadRequestException('Edit name or enabled only; recreate the trigger to change event or grants');
     }
     const data: { name?: string; enabled?: boolean } = {};
     if (input.name != null) {
@@ -83,6 +140,39 @@ export class TriggersService {
     await this.prisma.trigger.delete({ where: { id } });
   }
 
+  /** Fire first-join rewards when a brand-new player record is created / first seen online. */
+  async evaluateFirstJoin(orgId: string, serverInstanceId: string, player: TriggerPlayer) {
+    const triggers = await this.prisma.trigger.findMany({
+      where: { orgId, serverInstanceId, enabled: true, eventType: TRIGGER_EVENT_FIRST_JOIN },
+    });
+    for (const trigger of triggers) {
+      await this.fireOnce(trigger, player, eventKeyForFirstJoin()).catch(() => undefined);
+    }
+  }
+
+  /** Fire playtime milestones when lifetime seconds cross configured hour thresholds. */
+  async evaluatePlaytime(
+    orgId: string,
+    serverInstanceId: string,
+    player: TriggerPlayer,
+    previousLifetimeSeconds: number,
+    nextLifetimeSeconds: number,
+  ) {
+    const triggers = await this.prisma.trigger.findMany({
+      where: { orgId, serverInstanceId, enabled: true, eventType: TRIGGER_EVENT_PLAYTIME },
+    });
+    for (const trigger of triggers) {
+      let config: PlaytimeConfig;
+      try {
+        config = parsePlaytimeConfig(trigger.eventConfig);
+      } catch {
+        continue;
+      }
+      if (!crossedPlaytimeHours(previousLifetimeSeconds, nextLifetimeSeconds, config.hours)) continue;
+      await this.fireOnce(trigger, player, eventKeyForPlaytime(config.hours)).catch(() => undefined);
+    }
+  }
+
   async completeItemGrant(payload: Record<string, unknown>, runStatus: string, output: string) {
     const fireId = typeof payload.triggerFireId === 'string' ? payload.triggerFireId : '';
     if (!fireId) return;
@@ -96,9 +186,12 @@ export class TriggersService {
       where: {
         status: 'pending',
         trigger: { orgId, serverInstanceId, enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
-        player: { online: true, steamId: { not: null } },
+        player: { online: true },
       },
-      include: { trigger: true, player: { select: { id: true, name: true, steamId: true } } },
+      include: {
+        trigger: true,
+        player: { select: { id: true, name: true, steamId: true, identityKey: true, online: true, lifetimeSeconds: true } },
+      },
       take: 32,
     });
     for (const fire of fires) {
@@ -113,7 +206,10 @@ export class TriggersService {
         status: 'pending',
         trigger: { enabled: true, actionType: TRIGGER_ACTION_GRANT_ITEMS },
       },
-      include: { trigger: true, player: { select: { id: true, name: true, steamId: true } } },
+      include: {
+        trigger: true,
+        player: { select: { id: true, name: true, steamId: true, identityKey: true, online: true, lifetimeSeconds: true } },
+      },
       take: 16,
     });
     for (const fire of fires) {
@@ -121,9 +217,60 @@ export class TriggersService {
     }
   }
 
+  private async backfillTrigger(trigger: {
+    id: string;
+    orgId: string;
+    serverInstanceId: string;
+    createdById: string | null;
+    eventType: string;
+    eventConfig: unknown;
+    actionConfig: unknown;
+  }) {
+    if (trigger.eventType === TRIGGER_EVENT_FIRST_JOIN) {
+      const players = await this.prisma.player.findMany({
+        where: { orgId: trigger.orgId, serverInstanceId: trigger.serverInstanceId },
+        select: { id: true, name: true, steamId: true, identityKey: true, online: true, lifetimeSeconds: true },
+        take: 500,
+      });
+      for (const player of players) {
+        await this.fireOnce(trigger, player, eventKeyForFirstJoin()).catch(() => undefined);
+      }
+      return;
+    }
+    if (trigger.eventType === TRIGGER_EVENT_PLAYTIME) {
+      let config: PlaytimeConfig;
+      try {
+        config = parsePlaytimeConfig(trigger.eventConfig);
+      } catch {
+        return;
+      }
+      const target = config.hours * 3600;
+      const players = await this.prisma.player.findMany({
+        where: { orgId: trigger.orgId, serverInstanceId: trigger.serverInstanceId, lifetimeSeconds: { gte: target } },
+        select: { id: true, name: true, steamId: true, identityKey: true, online: true, lifetimeSeconds: true },
+        take: 500,
+      });
+      for (const player of players) {
+        await this.fireOnce(trigger, player, eventKeyForPlaytime(config.hours)).catch(() => undefined);
+      }
+    }
+  }
+
+  private async fireOnce(
+    trigger: { id: string; orgId: string; serverInstanceId: string; createdById: string | null; actionConfig: unknown },
+    player: TriggerPlayer,
+    eventKey: string,
+  ) {
+    const existing = await this.prisma.triggerFire.findUnique({
+      where: { triggerId_playerId_eventKey: { triggerId: trigger.id, playerId: player.id, eventKey } },
+    });
+    if (existing) return;
+    await this.enqueueGrantItems(trigger, player, eventKey, true);
+  }
+
   private async enqueueGrantItems(
     trigger: { id: string; orgId: string; serverInstanceId: string; createdById: string | null; actionConfig: unknown },
-    player: { id: string; name: string; steamId: string | null },
+    player: TriggerPlayer,
     eventKey: string,
     recordFire: boolean,
   ) {
@@ -133,7 +280,12 @@ export class TriggersService {
     if (recordFire) {
       try {
         const fire = await this.prisma.triggerFire.create({
-          data: { triggerId: trigger.id, playerId: player.id, eventKey, status: player.steamId ? 'queued' : 'failed' },
+          data: {
+            triggerId: trigger.id,
+            playerId: player.id,
+            eventKey,
+            status: player.online ? 'queued' : 'pending',
+          },
         });
         fireId = fire.id;
       } catch {
@@ -145,22 +297,28 @@ export class TriggersService {
       });
       fireId = existing?.id ?? null;
     }
-    if (!player.steamId) {
-      if (fireId) await this.prisma.triggerFire.update({ where: { id: fireId }, data: { status: 'failed' } });
+
+    if (!player.online) {
+      if (fireId) await this.prisma.triggerFire.update({ where: { id: fireId }, data: { status: 'pending' } });
       return;
     }
-    const levelHint = eventKey.startsWith('level:') ? eventKey.slice(6) : '';
+
+    const hoursHint = eventKey.startsWith('playtime:') ? eventKey.slice('playtime:'.length) : '';
+    const uuid = player.identityKey.startsWith('uuid:') ? player.identityKey.slice(5) : undefined;
     const queued = await this.jobs.enqueueInternalJob(trigger.orgId, trigger.createdById, trigger.serverInstanceId, 'TRIGGER_GRANT_ITEMS', {
       triggerId: trigger.id,
       triggerFireId: fireId,
       playerId: player.id,
       steamId: player.steamId,
+      identityKey: player.identityKey,
+      uuid,
       name: player.name,
+      player: player.name,
       items: action.items,
       notifyPlayer: action.notifyPlayer,
       message: action.message
         .replaceAll('{name}', player.name)
-        .replaceAll('{level}', levelHint)
+        .replaceAll('{hours}', hoursHint)
         .replaceAll('{items}', summary),
     });
     if (recordFire && fireId) {

@@ -103,7 +103,7 @@ export interface TriggerRecord {
   name: string;
   enabled: boolean;
   eventType: string;
-  eventConfig: { level?: number; comparison?: string };
+  eventConfig: { level?: number; comparison?: string; hours?: number };
   actionType: string;
   actionConfig: { claimCount?: number; notifyPlayer?: boolean; message?: string; items?: { name: string; quantity: number }[] };
   applyToExisting: boolean;

@@ -1,5 +1,20 @@
-# Changelog
+﻿# Changelog
 
+## [0.14.0] - 2026-09-10
+
+### Added
+
+- Minecraft trigger events: **First join** and **Lifetime playtime** (grant items via RCON `give`).
+- Triggers dashboard create flow with grant items, optional chat notify, and apply-to-existing backfill.
+
+### Changed
+
+- Trigger delivery uses in-game name/UUID (no Steam ID required); offline fires stay pending until the player is online.
+- First-join evaluation on roster create and join logs; playtime milestones on disconnect and roster sync.
+
+### Removed
+
+- "Level progression sync not yet available" dead-end on the Triggers page.
 ## [0.13.0] - 2026-09-10
 
 ### Changed
@@ -15,7 +30,7 @@
 
 - Player `deaths` and `level` columns (migration `20260910000007_drop_player_deaths_level`).
 - `PLAYER_SET_DEATHS` control-plane job path and death-pin logic.
-- `GET …/players/:id/inventory` route (410 stub removed).
+- `GET â€¦/players/:id/inventory` route (410 stub removed).
 - Level-based `player_level` trigger event (create UI disabled until Minecraft progression sync exists).
 - 7DTD chat log parser and `entityId` on new chat event payloads.
 
@@ -74,14 +89,14 @@
 ### Changed
 
 - Triggers grant UI/copy is Minecraft-native (no quality suffix); grant configs persist `quality: null`.
-- Portable Redis must be ≥ 6.2; `scripts/install-portable-redis.ps1` installs Redis 7.0.15; `start-local-infra.ps1` fails fast on older builds.
+- Portable Redis must be â‰¥ 6.2; `scripts/install-portable-redis.ps1` installs Redis 7.0.15; `start-local-infra.ps1` fails fast on older builds.
 - `restart-stack.ps1` health check uses `/api/health` and starts CP/web via `pnpm` redirects (more reliable on Windows).
 
 ## [0.7.0] - 2026-09-10
 
 ### Added
 
-- `scripts/install-agent-service.ps1` — Windows Scheduled Task to start the host agent at boot/logon.
+- `scripts/install-agent-service.ps1` â€” Windows Scheduled Task to start the host agent at boot/logon.
 
 ### Changed
 
@@ -92,9 +107,9 @@
 
 ### Added
 
-- `scripts/restart-stack.ps1` — restart portable Postgres/Redis + control-plane + web (+ optional agent).
-- `scripts/prod-up.ps1` — production Docker Compose bring-up with optional migrate / cloudflared / discord-bot profiles.
-- `docs/production-deploy.md` — Docker vs Windows-portable production checklist (agent always on game host).
+- `scripts/restart-stack.ps1` â€” restart portable Postgres/Redis + control-plane + web (+ optional agent).
+- `scripts/prod-up.ps1` â€” production Docker Compose bring-up with optional migrate / cloudflared / discord-bot profiles.
+- `docs/production-deploy.md` â€” Docker vs Windows-portable production checklist (agent always on game host).
 
 ### Changed
 
@@ -112,7 +127,7 @@
 - Join/leave log parsing is Minecraft-only; prefers `uuid:` identity and Discord alerts show Player + UUID.
 - Discord alert footer branded for Minecraft; Steam/EOS fields omitted when UUID is present.
 - Player portal profile drops bag/belt inventory UI; support copy is account-neutral.
-- Worlds/Saves table drops 7DTD “Game day” column.
+- Worlds/Saves table drops 7DTD â€œGame dayâ€ column.
 - Places / vehicles / POI player-auth routes return **410 Gone**.
 
 ### Deprecated
@@ -124,7 +139,7 @@
 ### Added
 
 - NeoForge **config merge**: `MOD_CONFIG_READ` / `WRITE` / `MERGE_PREVIEW` / `MERGE_APPLY` for install paths under `config/` and `defaultconfigs/`.
-- Jar → modId discovery (`neoforge.mods.toml`) with config file listing on active mods.
+- Jar â†’ modId discovery (`neoforge.mods.toml`) with config file listing on active mods.
 - Quarantine template staging under `mods/.quarantine/.config-templates/{jar}/` (jar defaults + pack defaultconfigs + live snapshots).
 - Ported additive `configmerge` engine (TOML/INI/JSON/XML); SNBT listed with skip warning.
 
@@ -225,7 +240,7 @@
 
 - Added server-aware navigation and persisted server selection across operational pages, so multi-server operators can explicitly target the intended 7DTD instance.
 - Added managed stable-build updates (`SERVER_UPDATE`) for 7DTD. Mastermind checks Steam, performs a safe save/stop/update/start sequence when required, and can check for a stable build before the host starts the server.
-- Added configurable Mastermind-owned Stability Safe Restart policy: enable/disable, 4–64 GiB RAM threshold, and 30-minute to 24-hour cooldown. The VM watcher reports memory to Mastermind; it no longer directly restarts 7DTD.
+- Added configurable Mastermind-owned Stability Safe Restart policy: enable/disable, 4â€“64 GiB RAM threshold, and 30-minute to 24-hour cooldown. The VM watcher reports memory to Mastermind; it no longer directly restarts 7DTD.
 - Added one-time scheduled-reboot suppression. A successful stability restart skips the nearest automatic reboot, and operators can use **Skip next auto reboot** from the server page.
 - Added level-based automation triggers for land-claim rewards and item grants, including safe `grantitems` handling and donated land-claim reward support.
 - Added tracked player vehicles with staff return controls and player-portal visibility where permitted.
@@ -261,10 +276,10 @@ Post-0.0.11 portal/shop/Allocs/PrismaCore work shipped in `0.0.12` (2026-08-18).
 
 ### Added
 
-- Donator-shop optional In-Game Gifts (item/qty/quality) and donor chat color; donation snapshots and delivery status; sanitized telnet `giveplus` / `playerchatcolor` with offline retry. Copy frames gifts as thank-you gifts after donation — not item purchases.
+- Donator-shop optional In-Game Gifts (item/qty/quality) and donor chat color; donation snapshots and delivery status; sanitized telnet `giveplus` / `playerchatcolor` with offline retry. Copy frames gifts as thank-you gifts after donation â€” not item purchases.
 - Player shop pages show In-Game Gifts with `/item-icon/{name}` icons; admin gift autocomplete from ItemIcons + agent `ITEM_CATALOG` (items and blocks, including `keystoneBlock`).
-- Staff **Set deaths** (`PLAYER_SET_DEATHS` → ServerTools `st-SetDeaths`) with a short control-plane pin after success.
-- Server controls **Save world** (`SERVER_SAVEWORLD` → telnet `saveworld`) and **Save-stop** (`SERVER_SAVE_STOP`: saveworld, full-world backup, then shutdown).
+- Staff **Set deaths** (`PLAYER_SET_DEATHS` â†’ ServerTools `st-SetDeaths`) with a short control-plane pin after success.
+- Server controls **Save world** (`SERVER_SAVEWORLD` â†’ telnet `saveworld`) and **Save-stop** (`SERVER_SAVE_STOP`: saveworld, full-world backup, then shutdown).
 - Verified members can recommend mods from the Mods page. Uploads land in **Pending Approval** until staff approve them into Mods or reject them.
 - Manager **Status** button shows Online / Offline / Maintenance. Staff can enter or leave maintenance: the password from Settings is written to `serverconfig.xml` `ServerPassword`, then the server does a safe restart.
 
@@ -406,14 +421,14 @@ Post-0.0.11 portal/shop/Allocs/PrismaCore work shipped in `0.0.12` (2026-08-18).
 - Fixed restored mods retaining quarantine permissions that prevented the 7DTD service account from reading `ModInfo.xml`; restored trees now receive loader-safe directory and file modes.
 - Added per-rule alert pipeline testing with real Discord delivery, inline success/failure results, role protection, webhook validation, retries/rate limiting, and audit logging.
 - Added Player Connected and Player Disconnected Discord alert rules driven by real 7DTD log state transitions, including server, player name, Steam ID, and EOS ID details with duplicate-event suppression.
-- Added a dedicated player-only Chat section that parses genuine 7DTD chat lines, stores clean history, filters server messages, and optionally relays each server’s chat to a validated Discord webhook with mention suppression.
+- Added a dedicated player-only Chat section that parses genuine 7DTD chat lines, stores clean history, filters server messages, and optionally relays each serverâ€™s chat to a validated Discord webhook with mention suppression.
 - Added a Chat reply box that safely sends operator messages through the audited RCON job pipeline with an automatic `say` prefix so they appear in-game as Server.
 
 ### Fixed
 
 - Prevented duplicate Discord player lifecycle alerts by ignoring preliminary login and teleport spawn lines and deduplicating repeated connect/disconnect deliveries for 15 seconds.
 - Routed scheduled 7DTD restart jobs through the full safe-restart protocol while preserving immediate manual Restart behavior.
-- Fixed successful server kills appearing ineffective by waiting for job completion and using game reachability—not host-agent connectivity—for server online status.
+- Fixed successful server kills appearing ineffective by waiting for job completion and using game reachabilityâ€”not host-agent connectivityâ€”for server online status.
 - Made Kill idempotent so clicking it when 7DTD is already stopped verifies success instead of creating a failed job.
 - Fixed restored 7DTD saves being owned exclusively by the agent, which prevented the game from rewriting ConfigsDump XML files.
 - Hardened save wipes to flush the world, attempt a bounded graceful shutdown, escalate hung processes to SIGKILL, verify PID removal, and only then delete the configured save.
@@ -535,7 +550,7 @@ Post-0.0.11 portal/shop/Allocs/PrismaCore work shipped in `0.0.12` (2026-08-18).
 ### Fixed
 
 - (none)
-## 0.0.13 — 2026-08-24
+## 0.0.13 â€” 2026-08-24
 
 - Added verified player-facing Mod Request uploads at `/player`.
 - Added short request descriptions and backend attribution to the authenticated in-game/Steam player.
