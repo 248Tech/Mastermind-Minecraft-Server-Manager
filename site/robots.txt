@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://248tech.github.io/Mastermind-Minecraft-Server-Manager/sitemap.xml

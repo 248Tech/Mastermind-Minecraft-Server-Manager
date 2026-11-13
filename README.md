@@ -1,4 +1,32 @@
+<div align="center">
+
+<img src="site/assets/logo.png" alt="Mastermind logo" width="160">
+
 # Mastermind — Minecraft Server Manager
+
+**Control plane + Go host agent for Minecraft (Paper, NeoForge, Fabric) — safe restarts, RCON console, live map, plugin quarantine and world backups.**
+
+[![Live Demo](https://img.shields.io/badge/▶_Live_Demo-sign_in_as_admin-16a34a?style=for-the-badge)](https://248tech.github.io/Mastermind-Minecraft-Server-Manager/demo/)
+
+[![License: MIT](https://img.shields.io/github/license/248Tech/Mastermind-Minecraft-Server-Manager?style=flat-square&color=16a34a)](LICENSE)
+[![Release](https://img.shields.io/badge/release-v0.16.2-16a34a?style=flat-square)](CHANGELOG.md)
+[![Last commit](https://img.shields.io/github/last-commit/248Tech/Mastermind-Minecraft-Server-Manager?style=flat-square&color=22c55e)](https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/commits/main)
+[![Stars](https://img.shields.io/github/stars/248Tech/Mastermind-Minecraft-Server-Manager?style=flat-square&color=fb923c)](https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/stargazers)
+[![Issues](https://img.shields.io/github/issues/248Tech/Mastermind-Minecraft-Server-Manager?style=flat-square)](https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/issues)
+![Minecraft](https://img.shields.io/badge/Minecraft-Java-62B47A?style=flat-square)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Go](https://img.shields.io/badge/Go_1.22-00ADD8?style=flat-square&logo=go&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=flat-square&logo=nestjs&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000?style=flat-square&logo=nextdotjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL_16-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis_7-DC382D?style=flat-square&logo=redis&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
+
+[**Live demo**](https://248tech.github.io/Mastermind-Minecraft-Server-Manager/demo/) · [Project site](https://248tech.github.io/Mastermind-Minecraft-Server-Manager/) · [Quickstart](QUICKSTART.md) · [Production deploy](docs/production-deploy.md) · [Changelog](CHANGELOG.md)
+
+</div>
+
+> **Try it without installing anything:** open the [live demo](https://248tech.github.io/Mastermind-Minecraft-Server-Manager/demo/) and click **Enter as demo administrator** (or use `demo.admin@mastermind.demo` / `DemoAdmin!2026`). It is a static, in-browser simulation with mock data — no backend.
 
 **Control Plane + Host Agent** for managing Minecraft (Java / NeoForge / Fabric / Paper) servers. Instead of SSH’ing into each box, you run a small agent on every host; the control plane sends jobs (start, stop, safe restart, RCON, backups, etc.) and the agent runs them locally.
 

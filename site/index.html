@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mastermind — Minecraft Server Manager: Paper, NeoForge &amp; Fabric (Live Demo)</title>
+<meta name="description" content="Mastermind is an open-source control plane and Go host agent for Minecraft (Java, Paper, NeoForge, Fabric): safe restarts, RCON console, BlueMap live map, plugin and mod quarantine, world backups, schedules and Discord alerts. Built with NestJS, Next.js, Go, Postgres and Redis. Try the live demo.">
+<meta name="keywords" content="Minecraft server manager, Minecraft admin panel, Paper, NeoForge, Fabric, RCON, BlueMap, game server management, NestJS, Next.js, Go agent, BullMQ, Prisma, open source, portfolio">
+<meta name="author" content="248Tech">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://248tech.github.io/Mastermind-Minecraft-Server-Manager/">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0f">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mastermind Minecraft Server Manager">
+<meta property="og:title" content="Mastermind — Minecraft Server Manager">
+<meta property="og:description" content="Control plane + Go host agent: safe restarts, RCON console, live map, plugin quarantine, world backups and a player portal. Sign in to the live demo as admin.">
+<meta property="og:url" content="https://248tech.github.io/Mastermind-Minecraft-Server-Manager/">
+<meta property="og:image" content="https://248tech.github.io/Mastermind-Minecraft-Server-Manager/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Mastermind — Minecraft Server Manager">
+<meta name="twitter:description" content="Open-source control plane + Go agent. Try the live admin demo.">
+<meta name="twitter:image" content="https://248tech.github.io/Mastermind-Minecraft-Server-Manager/assets/og-image.png">
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"SoftwareApplication",
+  "name":"Mastermind Minecraft Server Manager",
+  "applicationCategory":"DeveloperApplication",
+  "operatingSystem":"Linux, Windows (Docker)",
+  "description":"Open-source control plane and Go host agent for managing Minecraft servers (Paper, NeoForge, Fabric).",
+  "url":"https://248tech.github.io/Mastermind-Minecraft-Server-Manager/",
+  "codeRepository":"https://github.com/248Tech/Mastermind-Minecraft-Server-Manager",
+  "license":"https://opensource.org/licenses/MIT",
+  "programmingLanguage":["TypeScript","Go"],
+  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},
+  "author":{"@type":"Organization","name":"248Tech","url":"https://github.com/248Tech"}
+}
+</script>
+<style>
+:root{--bg:#0a0a0f;--panel:#111118;--line:#252532;--text:#f1f5f9;--muted:#94a3b8;--dim:#64748b;--accent:#16a34a;--accent2:#4ade80;--orange:#fb923c}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,-apple-system,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--accent2);text-decoration:none}a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent2);outline-offset:3px}
+.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:#fff;color:#000;padding:8px;z-index:99}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+header.top{position:sticky;top:0;z-index:20;background:rgba(10,10,15,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:20px;height:60px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--text)}.logo img{width:30px;height:30px;border-radius:7px}
+nav.links{display:flex;gap:18px;margin-left:auto;font-size:.88rem}nav.links a{color:var(--muted)}nav.links a:hover{color:var(--text);text-decoration:none}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:.7rem 1.2rem;border-radius:10px;font-weight:600;border:1px solid var(--line);color:var(--text);background:var(--panel);font-size:.95rem}
+.btn:hover{text-decoration:none;border-color:#3f3f52}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 8px 30px rgba(34,197,94,.35)}.btn.primary:hover{background:#15803d}
+.hero{padding:72px 0 48px;background:radial-gradient(800px 420px at 15% 0,rgba(34,197,94,.2),transparent),radial-gradient(600px 400px at 95% 20%,rgba(251,146,60,.14),transparent)}
+.hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center}
+.eyebrow{display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);border:1px solid rgba(251,146,60,.3);background:rgba(251,146,60,.08);padding:.25rem .7rem;border-radius:99px}
+h1{font-size:clamp(2.1rem,5vw,3.4rem);line-height:1.08;margin:.9rem 0 1rem;letter-spacing:-.02em}
+h1 span{background:linear-gradient(90deg,#86efac,#fb923c);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:1.1rem;color:var(--muted);max-width:56ch;margin:0 0 1.6rem}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.badges{display:flex;gap:6px;flex-wrap:wrap}.badges img{height:20px}
+.hero-art{position:relative}.hero-art img{width:100%;max-width:380px;display:block;margin:0 auto;border-radius:20px;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 80px rgba(251,146,60,.15)}
+.creds{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:.88rem;max-width:460px}
+.creds b{color:#bbf7d0}.creds code{background:#0a0a0f;border:1px solid var(--line);padding:2px 7px;border-radius:6px;font-size:.82rem}
+section{padding:64px 0}
+section h2{font-size:clamp(1.5rem,3vw,2rem);margin:0 0 .5rem;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 32px;max-width:70ch}
+.alt{background:#0d0d14;border-block:1px solid var(--line)}
+.grid{display:grid;gap:16px}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+.card h3{margin:.2rem 0 .4rem;font-size:1.02rem}.card p{margin:0;color:var(--muted);font-size:.92rem}
+.ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:rgba(34,197,94,.14);color:var(--accent2);font-size:1.15rem}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;text-align:center}
+.stats b{display:block;font-size:2rem;color:#bbf7d0}.stats span{font-size:.82rem;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+pre.arch{margin:0;background:#06060a;border:1px solid var(--line);border-radius:12px;padding:20px;overflow:auto;font-size:.8rem;line-height:1.45;color:#cbd5e1}
+.tags{display:flex;flex-wrap:wrap;gap:8px}.tag{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:.3rem .8rem;font-size:.82rem;color:var(--muted)}
+.steps{counter-reset:s;display:grid;gap:12px;padding:0;list-style:none}
+.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 16px 16px 58px;position:relative}
+.steps li::before{content:counter(s);position:absolute;left:16px;top:14px;width:28px;height:28px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-weight:700;font-size:.85rem}
+code{font-family:"JetBrains Mono",Consolas,monospace;font-size:.85em}
+pre.code{background:#06060a;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;margin:10px 0 0;font-size:.82rem}
+footer{border-top:1px solid var(--line);padding:32px 0;color:var(--dim);font-size:.85rem}
+footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}
+@media(max-width:900px){.hero .wrap{grid-template-columns:1fr}.hero-art{order:-1}.hero-art img{max-width:240px}.g3,.g4{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}nav.links{display:none}}
+@media(max-width:560px){.g3,.g4,.g2{grid-template-columns:1fr}.hero{padding-top:40px}section{padding:44px 0}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><div class="wrap">
+  <a class="logo" href="./"><img src="assets/favicon.png" alt="" width="30" height="30">Mastermind</a>
+  <nav class="links" aria-label="Sections"><a href="#features">Features</a><a href="#architecture">Architecture</a><a href="#engineering">Engineering</a><a href="#run">Run it</a><a href="https://github.com/248Tech/Mastermind-Minecraft-Server-Manager">GitHub</a></nav>
+  <a class="btn primary" href="demo/" style="padding:.45rem .9rem;font-size:.85rem">Live demo</a>
+</div></header>
+
+<main id="main">
+<section class="hero"><div class="wrap">
+  <div>
+    <span class="eyebrow">Open source · MIT</span>
+    <h1>Run <span>Minecraft</span> servers without ever SSH’ing in.</h1>
+    <p class="lead">Mastermind is a full-stack control plane and Go host agent for Java servers (Paper, NeoForge, Fabric): safe restarts, RCON console, live BlueMap/Dynmap, plugin and mod quarantine, world backups, schedules, Discord alerts and a player portal — with every action queued, audited and attributed.</p>
+    <div class="cta">
+      <a class="btn primary" href="demo/">▶ Open the live demo</a>
+      <a class="btn" href="https://github.com/248Tech/Mastermind-Minecraft-Server-Manager">★ View on GitHub</a>
+    </div>
+    <div class="badges" aria-label="Project badges">
+      <img alt="MIT License" src="https://img.shields.io/github/license/248Tech/Mastermind-Minecraft-Server-Manager?style=flat-square&color=16a34a">
+      <img alt="Latest release" src="https://img.shields.io/badge/release-v0.16.2-16a34a?style=flat-square">
+      <img alt="Last commit" src="https://img.shields.io/github/last-commit/248Tech/Mastermind-Minecraft-Server-Manager?style=flat-square&color=22c55e">
+      <img alt="GitHub stars" src="https://img.shields.io/github/stars/248Tech/Mastermind-Minecraft-Server-Manager?style=flat-square&color=fb923c">
+      <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white">
+      <img alt="Go" src="https://img.shields.io/badge/Go_1.22-00ADD8?style=flat-square&logo=go&logoColor=white">
+      <img alt="Minecraft" src="https://img.shields.io/badge/Minecraft-Java-62B47A?style=flat-square">
+      <img alt="NestJS" src="https://img.shields.io/badge/NestJS-E0234E?style=flat-square&logo=nestjs&logoColor=white">
+      <img alt="Next.js" src="https://img.shields.io/badge/Next.js_14-000?style=flat-square&logo=nextdotjs&logoColor=white">
+      <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL_16-4169E1?style=flat-square&logo=postgresql&logoColor=white">
+      <img alt="Redis" src="https://img.shields.io/badge/Redis_7-DC382D?style=flat-square&logo=redis&logoColor=white">
+      <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white">
+    </div>
+    <div class="creds"><b>Demo admin — pre-filled on the login page</b><br>Email <code>demo.admin@mastermind.demo</code> · Password <code>DemoAdmin!2026</code><br><span style="color:var(--dim)">Static mock data in your browser. No backend, nothing is stored.</span></div>
+  </div>
+  <div class="hero-art"><img src="assets/logo.png" alt="Mastermind mascot seated on a golden throne" width="400" height="600" fetchpriority="high"></div>
+</div></section>
+
+<section class="alt" style="padding:36px 0"><div class="wrap stats" role="list">
+  <div role="listitem"><b>18k+</b><span>lines of TypeScript</span></div>
+  <div role="listitem"><b>7k+</b><span>lines of Go</span></div>
+  <div role="listitem"><b>79</b><span>commits across 30+ releases</span></div>
+  <div role="listitem"><b>15</b><span>automated test files</span></div>
+</div></section>
+
+<section id="features"><div class="wrap">
+  <h2>What it does</h2>
+  <p class="sub">Built from real operator pain: restarts that lose chunks, plugin updates that break the server, and staff who need access without shell keys. The demo exercises each of these.</p>
+  <div class="grid g3">
+    <div class="card"><div class="ic">⚡</div><h3>Safe restart</h3><p>Chat countdown, <code>save-all</code>, backup, kick verification and restart — run on demand or on a schedule with overlap prevention.</p></div>
+    <div class="card"><div class="ic">⌖</div><h3>RCON console &amp; live map</h3><p>Audited console with persistent <code>latest.log</code> following, plus your BlueMap, Dynmap or Squaremap embedded right in the dashboard.</p></div>
+    <div class="card"><div class="ic">◇</div><h3>Plugin &amp; mod quarantine</h3><p>Inventory <code>plugins/</code> and <code>mods/</code>, quarantine a bad update, restore it, and edit configs with a diff review before saving.</p></div>
+    <div class="card"><div class="ic">♟</div><h3>Players &amp; moderation</h3><p>Roster, kick, ban, op/deop and whitelist, chat moderation and Discord relay — every action attributed to an account.</p></div>
+    <div class="card"><div class="ic">▣</div><h3>World backups &amp; schedules</h3><p>World folder backups with retention, confirmed restore and wipe, cron or simple schedules, and pre-restart warnings.</p></div>
+    <div class="card"><div class="ic">♡</div><h3>Player portal &amp; donations</h3><p>Public map, player profiles, approved mod downloads and a Stripe-backed supporter shop with signed-webhook fulfilment and milestone triggers.</p></div>
+  </div>
+  <p style="margin-top:28px"><a class="btn primary" href="demo/">Try each feature in the demo →</a></p>
+</div></section>
+
+<section id="architecture" class="alt"><div class="wrap">
+  <h2>Architecture</h2>
+  <p class="sub">The public web app never touches RCON, world files or the server process. Work is queued through the control plane and executed locally by a paired agent.</p>
+  <pre class="arch" aria-label="Architecture diagram">
+ ┌──────────────────────────── CONTROL PLANE ─────────────────────────────┐
+ │  Next.js UI ◄─► NestJS API + WebSocket ◄─► PostgreSQL · Redis/BullMQ   │
+ └──────────────┬──────────────────────────────────────┬──────────────────┘
+        HTTPS / WS │                                     │ job queue · heartbeat
+                   ▼                                     ▼
+ ┌──────────────── HOST (Go agent) ───────────────────────────────────────┐
+ │ one-time pairing · versioned heartbeat · job runner · MC adapter       │
+ │              └────►  Minecraft server (RCON · process · files)         │
+ └─────────────────────────────────────────────────────────────────────────┘</pre>
+  <div class="grid g4" style="margin-top:20px">
+    <div class="card"><h3>1 · Click</h3><p>Staff triggers an action in the dashboard.</p></div>
+    <div class="card"><h3>2 · Authorize</h3><p>Role checked; job enqueued per server.</p></div>
+    <div class="card"><h3>3 · Execute</h3><p>Agent runs it locally via the Minecraft adapter (RCON, process, filesystem).</p></div>
+    <div class="card"><h3>4 · Audit</h3><p>Output and initiating account return to the UI.</p></div>
+  </div>
+</div></section>
+
+<section id="engineering"><div class="wrap">
+  <h2>Engineering highlights</h2>
+  <p class="sub">Decisions that matter beyond the feature list.</p>
+  <div class="grid g2">
+    <div class="card"><h3>Security by design</h3><p>Salted scrypt password hashing, persistent login throttling, JWT agent identity with key rotation, encrypted integration secrets, signed Stripe webhooks, and a documented <a href="https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/blob/main/docs/SECURITY_AUDIT_2026-08-14.md">security audit</a>.</p></div>
+    <div class="card"><h3>Reliable job pipeline</h3><p>BullMQ queues with serialized mutations, bounded read concurrency, jittered retries, stale-run recovery, backpressure and overlap prevention for scheduled work.</p></div>
+    <div class="card"><h3>RCON stays private</h3><p>RCON binds to localhost or a private network and is never exposed to the public web app. World wipe and restore require explicit confirmation payloads.</p></div>
+    <div class="card"><h3>Documented &amp; maintained</h3><p>Architecture, ERD, release context and design docs per feature, a protected <code>main</code> branch, PR templates and a detailed changelog.</p></div>
+  </div>
+  <h3 style="margin:32px 0 12px">Tech stack</h3>
+  <div class="tags"><span class="tag">NestJS</span><span class="tag">TypeScript</span><span class="tag">Next.js 14 / React</span><span class="tag">Prisma</span><span class="tag">PostgreSQL 16</span><span class="tag">Redis 7 + BullMQ</span><span class="tag">WebSockets</span><span class="tag">Go 1.22 agent</span><span class="tag">Docker Compose</span><span class="tag">pnpm workspaces</span><span class="tag">Stripe</span><span class="tag">Discord API</span><span class="tag">RCON</span><span class="tag">Paper / NeoForge / Fabric</span><span class="tag">systemd</span></div>
+</div></section>
+
+<section id="run" class="alt"><div class="wrap">
+  <h2>Run it yourself</h2>
+  <p class="sub">Requires Docker, Node 20, pnpm 9 and Go 1.22. Enable RCON in <code>server.properties</code> on the game host.</p>
+  <ol class="steps">
+    <li><b>Clone and configure</b><pre class="code">git clone https://github.com/248Tech/Mastermind-Minecraft-Server-Manager.git
+cd Mastermind-Minecraft-Server-Manager
+cp infra/.env.example infra/.env
+# set JWT_SECRET, JWT_AGENT_SECRET, BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD</pre></li>
+    <li><b>Start everything</b><pre class="code">make up</pre></li>
+    <li><b>Sign in</b> at <code>http://localhost:3000</code>, then pair a host from <i>Hosts → Pair</i>.</li>
+  </ol>
+  <p style="margin-top:20px"><a href="https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/blob/main/QUICKSTART.md">Full quickstart</a> · <a href="https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/blob/main/docs/production-deploy.md">Production deploy</a> · <a href="https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/blob/main/CHANGELOG.md">Changelog</a></p>
+</div></section>
+</main>
+
+<footer><div class="wrap"><span>© 2026 248Tech · MIT License · Not an official Minecraft product; not affiliated with Mojang or Microsoft.</span><span><a href="demo/">Live demo</a> · <a href="https://github.com/248Tech/Mastermind-Minecraft-Server-Manager">Source</a> · <a href="https://github.com/248Tech/Mastermind-Minecraft-Server-Manager/issues">Issues</a></span></div></footer>
+</body>
+</html>
